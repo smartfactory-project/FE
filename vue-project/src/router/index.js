@@ -7,6 +7,12 @@ const routes = [
   { path: '/announcements', name: 'announcements', component: () => import('@/pages/Announcements.vue') }, 
   { path: '/production', name: 'production', component: () => import('@/pages/Production.vue') }, 
   { path: '/charts', name: 'charts', component: () => import('@/pages/Charts.vue') }, 
+  { path: '/posts', name: 'posts', component: () => import('@/views/PostsPage.vue') },
+  { path: '/schedule', name: 'schedule', component: () => import('@/views/SchedulePage.vue') },
 ]
 
-export default createRouter({ history: createWebHistory(), routes })
+export default createRouter({ history: createWebHistory(), routes,
+  scrollBehavior() {
+  return { left: 0, top: 0 }
+  },
+ })
