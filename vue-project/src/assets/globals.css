@@ -1,0 +1,93 @@
+/* Tailwind v3 지시어 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 디자인 토큰 (그대로 유지) ===== */
+:root {
+  --background: #ffffff;
+  --foreground: #374151;
+  --card: #f8fafc;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #374151;
+  --primary: #374151;
+  --primary-foreground: #ffffff;
+  --secondary: #6366f1;
+  --secondary-foreground: #ffffff;
+  --muted: #f8fafc;
+  --muted-foreground: #1f2937;
+  --accent: #6366f1;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #ffffff;
+  --ring: #6366f1;
+  --chart-1: #d97706;
+  --chart-2: #a16207;
+  --chart-3: #374151;
+  --chart-4: #4b5563;
+  --chart-5: #6366f1;
+  --radius: 0.75rem;
+  --sidebar: #f8fafc;
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #374151;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #6366f1;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #6366f1;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --popover: #1e293b;
+  --popover-foreground: #f1f5f9;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #475569;
+  --secondary-foreground: #f1f5f9;
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  --accent: #6366f1;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #334155;
+  --input: #1e293b;
+  --ring: #6366f1;
+  --chart-1: #f59e0b;
+  --chart-2: #d97706;
+  --chart-3: #6366f1;
+  --chart-4: #8b5cf6;
+  --chart-5: #06b6d4;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #475569;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #334155;
+  --sidebar-ring: #6366f1;
+}
+
+@layer base {
+  * { @apply border-border; }
+  :focus-visible {
+    @apply outline-none ring-2 ring-offset-2 ring-[var(--ring)] ring-opacity-50;
+  }
+
+  body { @apply bg-background text-foreground; }
+}
+/* (선택) 폰트 변수 헬퍼 */
+.font-vars { font-family: var(--font-geist-sans, Inter, ui-sans-serif, system-ui); }
+.code-font { font-family: var(--font-geist-mono, "Roboto Mono", ui-monospace, SFMono-Regular); }
+.lucide {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75; /* 기본 2보다 살짝 얇게 */
+}
