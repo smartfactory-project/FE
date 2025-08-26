@@ -2,9 +2,11 @@
   <div class="space-y-6">
     <div class="flex justify-between items-center">
       <h2 class="text-2xl font-bold text-foreground">최신 게시글</h2>
-      <Button class="bg-primary hover:bg-primary/90">
-        <Plus class="w-4 h-4 mr-2" />새 게시글 작성
-      </Button>
+      <RouterLink to="/posts/create">
+        <Button class="bg-primary hover:bg-primary/90">
+          <Plus class="w-4 h-4 mr-2" />새 게시글 작성
+        </Button>
+      </RouterLink>
     </div>
 
     <div class="space-y-4">
@@ -17,12 +19,11 @@
           <div class="flex items-start justify-between">
             <div class="flex items-center space-x-3">
               <Avatar class="w-10 h-10">
-                <!-- <AvatarImage v-if="post.avatar" :src="post.avatar" :alt="post.author" /> -->
-                <!-- <AvatarImage :src="post.avatar || '/placeholder.svg'" :alt="post.author" /> -->
                  <AvatarImage
                     v-if="post.avatar && !imgErr[post.id]"
                     :src="post.avatar"
                     :alt="post.author"
+                    class="object-contain object-center"
                     @error="imgErr[post.id] = true"
                     />
                 <AvatarFallback>{{ post.author?.[0] || '?' }}</AvatarFallback>
@@ -48,9 +49,11 @@
         </CardHeader>
 
         <CardContent class="pt-0">
-          <h2 class="text-xl font-bold text-foreground mb-3 hover:text-primary cursor-pointer transition-colors">
-            {{ post.title }}
-          </h2>
+          <RouterLink
+          :to="`/posts/${post.id}`"
+           class="block text-xl font-bold text-foreground mb-3 hover:text-primary transition-colors">
+           {{ post.title }}
+          </RouterLink>
           <p class="text-muted-foreground mb-4 line-clamp-3">{{ post.content }}</p>
 
           <div class="flex flex-wrap gap-2 mb-4">
@@ -87,6 +90,7 @@
 </template>
 
 <script setup>
+import { RouterLink } from 'vue-router'
 import { ref, computed } from 'vue'
 import { Plus, Heart, MessageCircle, Share2, Bookmark, TrendingUp } from 'lucide-vue-next'
 import Card from '@/components/ui/card/Card.vue'
