@@ -174,6 +174,8 @@ import Button from '@/components/ui/Button.vue'
 import Select from '@/components/ui/Select.vue'
 import Badge from '@/components/ui/Badge.vue'
 
+import postAPI from '@/services/post.js'
+
 const router = useRouter()
 
 const title = ref('')
@@ -221,8 +223,32 @@ function handleSubmit() {
     category: category.value,
     tags: tags.value,
   })
+  savePost()
   router.push('/posts')
 }
+
+async function savePost() {
+   try {
+     const payload = {
+       title: title.value.trim(),
+       content: content.value.trim(),
+       category: category.value,
+       tags: tags.value,
+     }
+     const { data } = await postAPI.create(payload)
+     // 보통 data.id(생성된 게시글 PK)를 반환하도록 백엔드 구성
+     console.log(data)
+     if (data?.id) {
+       router.push({ name: 'post-detail', params: { id: data.id } })
+     } else {
+       router.push('/posts')
+     }
+   } catch (e) {
+     console.error(e)
+     alert(e?.response?.data?.message || '게시글 저장에 실패했습니다.')
+   }
+ }
+
 
 function submitForm() {
   // 폼의 required 검사도 통과시키고 싶으면 네이티브 submit 트리거

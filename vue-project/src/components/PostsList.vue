@@ -91,7 +91,9 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import postAPI from '@/services/post.js'
+
 import { Plus, Heart, MessageCircle, Share2, Bookmark, TrendingUp } from 'lucide-vue-next'
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
@@ -108,72 +110,68 @@ const props = defineProps({
   sort: { type: String, default: 'latest' },
 })
 
-const posts = ref([
-  {
-    id: 1,
-    title: 'SAMJO 생산성 향상을 위한 새로운 워크플로우 제안',
-    content:
-      '팀 협업 효율성을 높이기 위한 새로운 워크플로우를 제안합니다. 이 방법을 통해 프로젝트 완료 시간을 30% 단축할 수 있었습니다...',
-    author: '김철수',
-    avatar: '/abstract-profile.png',
-    timestamp: '2시간 전',
-    likes: 24,
-    comments: 8,
-    category: '생산성',
-    isRecommended: true,
-    tags: ['워크플로우', '효율성', '팀워크'],
-  },
-  {
-    id: 2,
-    title: 'Q4 생산 목표 달성을 위한 전략 공유',
-    content:
-      '올해 4분기 생산 목표를 달성하기 위해 우리 팀에서 시도하고 있는 전략들을 공유합니다. 특히 품질 관리 부분에서 좋은 결과를 얻고 있습니다...',
-    author: '이영희',
-    avatar: '/confident-businesswoman.png',
-    timestamp: '4시간 전',
-    likes: 18,
-    comments: 12,
-    category: '전략',
-    isRecommended: false,
-    tags: ['목표달성', '전략', '품질관리'],
-  },
-  {
-    id: 3,
-    title: '신입사원을 위한 SAMJO 시스템 가이드',
-    content:
-      '새로 입사하신 분들을 위해 SAMJO 시스템 사용법을 정리했습니다. 처음 사용하시는 분들도 쉽게 따라할 수 있도록 스크린샷과 함께 설명드립니다...',
-    author: '박민수',
-    avatar: '/young-man.png',
-    timestamp: '6시간 전',
-    likes: 31,
-    comments: 15,
-    category: '가이드',
-    isRecommended: true,
-    tags: ['신입사원', '가이드', '시스템'],
-  },
-  {
-    id: 4,
-    title: '월간 생산성 리포트 및 개선 제안',
-    content:
-      '지난 달 생산성 데이터를 분석한 결과와 개선 방안을 제안합니다. 데이터 기반의 인사이트로 더 나은 성과를 만들어봅시다...',
-    author: '정수진',
-    avatar: '/professional-woman.png',
-    timestamp: '1일 전',
-    likes: 42,
-    comments: 23,
-    category: '분석',
-    isRecommended: false,
-    tags: ['리포트', '분석', '개선'],
-  },
-])
+
 
 const catMap = {
   productivity: '생산성',
   strategy: '전략',
   guide: '가이드',
   analysis: '분석',
+  discussion: '토론',
+  announcement: '공지사항',
 }
 
+const posts = ref([])
+const loading = ref(false)
+const errorMsg = ref('')
+
+onMounted(fetchPosts)
+
+async function fetchPosts() {
+  try {
+    loading.value = true
+    errorMsg.value = ''
+    const list = await postAPI.list()
+    posts.value = list.map((p) => ({
+      id: p.id,
+      title: p.title,
+      content: p.content,
+      category: catMap[p.category] || p.category,      // 한글 라벨
+      isRecommended: false,                             // 서버 필드 없으면 기본값
+      likes: p.likes ?? 0,
+      comments: p.comments ?? 0,
+      author: p.author ?? `사용자 #${p.userId ?? '?'}`, // 서버에 author 없으면 userId로 대체
+      avatar: p.avatar ?? '/abstract-profile.png',
+      timestamp: toRelativeTime(p.createdAt),
+      tags: Array.isArray(p.tags) ? p.tags : [],        // ['테스트'] 형태 지원
+    }))
+  } catch (e) {
+    console.error(e)
+    errorMsg.value = e?.response?.data?.message || '게시글을 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// createdAt → “n분/시간/일 전” 간단 변환
+function toRelativeTime(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  const now = Date.now()
+  const diff = Math.max(0, Math.floor((now - then) / 1000)) // sec
+  if (diff < 60) return `${diff}초 전`
+  const m = Math.floor(diff / 60)
+  if (m < 60) return `${m}분 전`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}시간 전`
+  const d = Math.floor(h / 24)
+  return `${d}일 전`
+}
+
+
+
+
+// 기존 코드
 const visiblePosts = computed(() => {
   let arr = posts.value.slice()
 
@@ -184,7 +182,7 @@ const visiblePosts = computed(() => {
       p =>
         p.title.toLowerCase().includes(q) ||
         p.content.toLowerCase().includes(q) ||
-        p.tags.some(t => t.toLowerCase().includes(q)),
+        (Array.isArray(p.tags) && p.tags.some(t => (t || '').toLowerCase().includes(q))),
     )
   }
 

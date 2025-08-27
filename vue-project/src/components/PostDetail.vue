@@ -9,7 +9,7 @@
       </Button>
     </RouterLink>
 
-    <Card class="bg-card/50 backdrop-blur-sm border-border">
+    <Card v-if="post" class="bg-card/50 backdrop-blur-sm border-border">
       <CardHeader class="pb-6">
         <!-- 작성자 헤더 -->
         <div class="flex items-start justify-between mb-4">
@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Heart, MessageCircle, Share2, Bookmark, ArrowLeft, TrendingUp } from 'lucide-vue-next'
 
@@ -115,93 +115,84 @@ import Avatar from '@/components/ui/avatar/Avatar.vue'
 import AvatarImage from '@/components/ui/avatar/AvatarImage.vue'
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue'
 
-const props = defineProps({
-  postId: { type: String, required: true },
-})
+import postAPI from '@/services/post.js'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
+onMounted(() => loadPost(route.params.id))
+watch(() => route.params.id, (id) => loadPost(id))
 
-const SAMPLE_POSTS = [
-  {
-    id: 1,
-    title: 'SAMJO 생산성 향상을 위한 새로운 워크플로우 제안',
-    content:
-      '팀 협업 효율성을 높이기 위한 새로운 워크플로우를 제안합니다. 이 방법을 통해 프로젝트 완료 시간을 30% 단축할 수 있었습니다...',
-    author: '김철수',
-    avatar: '/abstract-profile.png',
-    timestamp: '2시간 전',
-    likes: 24,
-    comments: 8,
-    category: '생산성',
-    isRecommended: true,
-    tags: ['워크플로우', '효율성', '팀워크'],
-  },
-  {
-    id: 2,
-    title: 'Q4 생산 목표 달성을 위한 전략 공유',
-    content:
-      '올해 4분기 생산 목표를 달성하기 위해 우리 팀에서 시도하고 있는 전략들을 공유합니다. 특히 품질 관리 부분에서 좋은 결과를 얻고 있습니다...',
-    author: '이영희',
-    avatar: '/confident-businesswoman.png',
-    timestamp: '4시간 전',
-    likes: 18,
-    comments: 12,
-    category: '전략',
-    isRecommended: false,
-    tags: ['목표달성', '전략', '품질관리'],
-  },
-  {
-    id: 3,
-    title: '신입사원을 위한 SAMJO 시스템 가이드',
-    content:
-      '새로 입사하신 분들을 위해 SAMJO 시스템 사용법을 정리했습니다. 처음 사용하시는 분들도 쉽게 따라할 수 있도록 스크린샷과 함께 설명드립니다...',
-    author: '박민수',
-    avatar: '/young-man.png',
-    timestamp: '6시간 전',
-    likes: 31,
-    comments: 15,
-    category: '가이드',
-    isRecommended: true,
-    tags: ['신입사원', '가이드', '시스템'],
-  },
-  {
-    id: 4,
-    title: '월간 생산성 리포트 및 개선 제안',
-    content:
-      '지난 달 생산성 데이터를 분석한 결과와 개선 방안을 제안합니다. 데이터 기반의 인사이트로 더 나은 성과를 만들어봅시다...',
-    author: '정수진',
-    avatar: '/professional-woman.png',
-    timestamp: '1일 전',
-    likes: 42,
-    comments: 23,
-    category: '분석',
-    isRecommended: false,
-    tags: ['리포트', '분석', '개선'],
-  },
-]
+const catMap = {
+  productivity: '생산성',
+  strategy: '전략',
+  guide: '가이드',
+  analysis: '분석',
+  discussion: '토론',
+  announcement: '공지사항',
+}
 
-const post = computed(() => {
-  const idNum = Number(props.postId)
-  return SAMPLE_POSTS.find(p => p.id === idNum) || null
-})
-
+const post = ref(null)              // 서버에서 받은 포스트
+const loading = ref(false)
+const errorMsg = ref('')
+const imgErr = ref(false)
 const likes = ref(0)
 const isLiked = ref(false)
 const isBookmarked = ref(false)
-const imgErr = ref(false)
 
-// id(=post) 변경될 때 상태 동기화
-watch(post, (p) => {
-  if (!p) return
-  likes.value = p.likes
-  isLiked.value = p.isLiked ?? false
-  isBookmarked.value = p.isBookmarked ?? false
-  imgErr.value = false
-}, { immediate: true })
+async function loadPost(id) {
+  if (!id) return
+  try {
+    loading.value = true
+    errorMsg.value = ''
+    imgErr.value = false
 
+    const data = await postAPI.detail(id)
 
+    // 서버 필드 → 화면 필드 매핑
+    post.value = {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      category: catMap[data.category] || data.category,
+      author: data.author ?? `사용자 #${data.userId ?? '?'}`,
+      avatar: data.avatar ?? '/abstract-profile.png',
+      timestamp: toRelativeTime(data.createdAt),
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      comments: data.comments ?? 0,
+      isRecommended: data.isRecommended ?? false,
+    }
+
+    // 액션 초기화
+    likes.value = data.likes ?? 0
+    isLiked.value = false
+    isBookmarked.value = false
+  } catch (e) {
+    console.error(e)
+    errorMsg.value = e?.response?.data?.message || '게시글을 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// 상대시간
+function toRelativeTime(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  const now = Date.now()
+  const diff = Math.max(0, Math.floor((now - then) / 1000))
+  if (diff < 60) return `${diff}초 전`
+  const m = Math.floor(diff / 60)
+  if (m < 60) return `${m}분 전`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}시간 전`
+  const d = Math.floor(h / 24)
+  return `${d}일 전`
+}
+
+// 액션 핸들러 (로컬 토글; 실제 서버 연동 시 PATCH API 붙이면 됨)
 function handleLike() {
   isLiked.value = !isLiked.value
-  likes.value = isLiked.value ? likes.value + 1 : likes.value - 1
+  likes.value = isLiked.value ? likes.value + 1 : Math.max(0, likes.value - 1)
 }
 
 function handleBookmark() {
