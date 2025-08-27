@@ -17,7 +17,8 @@
         />
         <div class="flex justify-end">
           <Button :disabled="!newComment.trim()" @click="handleSubmitComment">
-            댓글 작성
+            {{ submitting ? '작성 중...' : '댓글 작성' }}
+            <!-- 댓글 작성 -->
           </Button>
         </div>
       </div>
@@ -89,8 +90,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Heart, Reply, MoreHorizontal } from 'lucide-vue-next'
+import { commentAPI } from '@/services/comments'  // ✅ 추가
 
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
@@ -101,58 +103,63 @@ import AvatarImage from '@/components/ui/avatar/AvatarImage.vue'
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue'
 
 const props = defineProps({
-  postId: { type: String, required: true },
+  postId: { type: [String, Number], required: true },
 })
+const emit = defineEmits(['loaded', 'created'])
 
 const newComment = ref('')
-const comments = ref([
-  {
-    id: 1,
-    author: '이영희',
-    avatar: '/confident-businesswoman.png',
-    content:
-      '정말 유용한 정보네요! 우리 팀에서도 비슷한 문제를 겪고 있었는데, 제안해주신 워크플로우를 적용해보겠습니다.',
-    timestamp: '1시간 전',
-    likes: 5,
-    isLiked: false,
-  },
-  {
-    id: 2,
-    author: '박민수',
-    avatar: '/young-man.png',
-    content:
-      '자동화 도구 관련해서 더 자세한 정보를 알 수 있을까요? 어떤 도구들을 사용하셨는지 궁금합니다.',
-    timestamp: '45분 전',
-    likes: 3,
-    isLiked: false,
-  },
-  {
-    id: 3,
-    author: '정수진',
-    avatar: '/professional-woman.png',
-    content:
-      '30% 시간 단축은 정말 인상적인 성과네요! 다른 부서에서도 벤치마킹할 수 있도록 더 구체적인 가이드라인을 공유해주시면 좋겠습니다.',
-    timestamp: '30분 전',
-    likes: 8,
-    isLiked: true,
-  },
-])
-
-// 아바타 이미지 로드 실패 여부 (댓글 id별로 저장)
+const comments = ref([])          // ✅ 서버에서 채울 것
+const submitting = ref(false)     // ✅ 추가
+const loading = ref(false)        // (선택) 로딩 표기 쓰고 싶으면
+const error = ref('')             // (선택) 에러 메시지
 const imgErr = ref({})
 
-function handleSubmitComment() {
-  if (!newComment.value.trim()) return
-  comments.value.push({
-    id: comments.value.length + 1,
-    author: '현재 사용자', // 실제 앱에서는 로그인 사용자명
-    avatar: '/placeholder.svg',
-    content: newComment.value,
-    timestamp: '방금 전',
-    likes: 0,
+function mapServerComment(c) {
+  // 백엔드 응답 필드명에 맞춰 안전하게 매핑
+  return {
+    id: c.id ?? c.commentId,
+    author: c.authorName ?? c.username ?? '익명',
+    avatar: c.avatarUrl ?? null,
+    content: c.content,
+    timestamp: (c.createdAt ?? '').replace('T', ' ').slice(0, 16) || '방금 전',
+    likes: c.likes ?? 0,
     isLiked: false,
-  })
-  newComment.value = ''
+  }
+}
+
+async function fetchComments() {
+  loading.value = true
+  error.value = ''
+  try {
+    const data = await commentAPI.list(props.postId)
+    comments.value = (data ?? []).map(mapServerComment)
+    emit('loaded', comments.value.length)
+  } catch (e) {
+    console.error(e)
+    error.value = '댓글을 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleSubmitComment() {
+  const content = newComment.value.trim()
+  if (!content) return
+
+  submitting.value = true
+  error.value = ''
+  try {
+    const saved = await commentAPI.create(props.postId, { content })
+    comments.value.unshift(mapServerComment(saved))
+
+    newComment.value = ''
+    emit('created', comments.value.length)
+  } catch (e) {
+    console.error(e)
+    error.value = '댓글 작성에 실패했습니다.'
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleLikeComment(commentId) {
@@ -160,11 +167,13 @@ function handleLikeComment(commentId) {
   if (idx === -1) return
   const target = comments.value[idx]
   const toggled = !target.isLiked
-  // 불변 업데이트(원하면 바로 mutate 해도 됨)
   comments.value[idx] = {
     ...target,
     isLiked: toggled,
-    likes: toggled ? target.likes + 1 : target.likes - 1,
+    likes: toggled ? target.likes + 1 : Math.max(0, target.likes - 1),
   }
 }
+
+onMounted(fetchComments)           // ✅ 마운트 시 서버에서 목록 로딩
+watch(() => props.postId, fetchComments)  // ✅ postId 바뀌면 재로딩
 </script>

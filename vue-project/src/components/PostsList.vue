@@ -19,13 +19,13 @@
           <div class="flex items-start justify-between">
             <div class="flex items-center space-x-3">
               <Avatar class="w-10 h-10">
-                 <AvatarImage
-                    v-if="post.avatar && !imgErr[post.id]"
-                    :src="post.avatar"
-                    :alt="post.author"
-                    class="object-contain object-center"
-                    @error="imgErr[post.id] = true"
-                    />
+                <AvatarImage
+                  v-if="post.avatar && !imgErr[post.id]"
+                  :src="post.avatar"
+                  :alt="post.author"
+                  class="object-contain object-center"
+                  @error="imgErr[post.id] = true"
+                />
                 <AvatarFallback>{{ post.author?.[0] || '?' }}</AvatarFallback>
               </Avatar>
               <div>
@@ -50,9 +50,10 @@
 
         <CardContent class="pt-0">
           <RouterLink
-          :to="`/posts/${post.id}`"
-           class="block text-xl font-bold text-foreground mb-3 hover:text-primary transition-colors">
-           {{ post.title }}
+            :to="`/posts/${post.id}`"
+            class="block text-xl font-bold text-foreground mb-3 hover:text-primary transition-colors"
+          >
+            {{ post.title }}
           </RouterLink>
           <p class="text-muted-foreground mb-4 line-clamp-3">{{ post.content }}</p>
 
@@ -67,20 +68,37 @@
             </Badge>
           </div>
 
+          <!-- 액션 -->
           <div class="flex items-center justify-between pt-4 border-t border-border">
             <div class="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-red-500">
-                <Heart class="w-4 h-4 mr-1" />{{ post.likes }}
+              <!-- ❤️ 좋아요: 상태 색 + 클릭 토글 -->
+              <Button
+                variant="ghost" size="sm"
+                :class="[post.liked ? 'text-red-500' : 'text-muted-foreground', 'hover:text-red-500']"
+                @click="toggleLike(post)"
+              >
+                <Heart class="w-4 h-4 mr-1" :class="post.liked ? 'fill-current' : ''" />
+                {{ post.likes }}
               </Button>
+
+              <!-- 💬 댓글 수 -->
               <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-blue-500">
-                <MessageCircle class="w-4 h-4 mr-1" />{{ post.comments }}
+                <MessageCircle class="w-4 h-4 mr-1" />
+                {{ post.comments }}
               </Button>
+
               <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-green-500">
                 <Share2 class="w-4 h-4 mr-1" />공유
               </Button>
             </div>
-            <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-yellow-500">
-              <Bookmark class="w-4 h-4" />
+
+            <!-- 🔖 북마크: 상태 색 + 클릭 토글 -->
+            <Button
+              variant="ghost" size="sm"
+              :class="[post.bookmarked ? 'text-yellow-500' : 'text-muted-foreground', 'hover:text-yellow-500']"
+              @click="toggleBookmark(post)"
+            >
+              <Bookmark class="w-4 h-4" :class="post.bookmarked ? 'fill-current' : ''" />
             </Button>
           </div>
         </CardContent>
@@ -103,14 +121,13 @@ import Badge from '@/components/ui/Badge.vue'
 import Avatar from '@/components/ui/avatar/Avatar.vue'
 import AvatarImage from '@/components/ui/avatar/AvatarImage.vue'
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue'
+
 const imgErr = ref({})
 
 const props = defineProps({
   filters: { type: Object, default: () => ({ query: '', category: 'all' }) },
   sort: { type: String, default: 'latest' },
 })
-
-
 
 const catMap = {
   productivity: '생산성',
@@ -132,18 +149,24 @@ async function fetchPosts() {
     loading.value = true
     errorMsg.value = ''
     const list = await postAPI.list()
+
     posts.value = list.map((p) => ({
       id: p.id,
       title: p.title,
       content: p.content,
-      category: catMap[p.category] || p.category,      // 한글 라벨
-      isRecommended: false,                             // 서버 필드 없으면 기본값
-      likes: p.likes ?? 0,
-      comments: p.comments ?? 0,
-      author: p.author ?? `사용자 #${p.userId ?? '?'}`, // 서버에 author 없으면 userId로 대체
+      category: catMap[p.category] || p.category,
+      isRecommended: !!p.isRecommended,
+
+      likes:      p.likes      ?? p.likesCount      ?? 0,
+      comments:   p.comments   ?? p.commentsCount   ?? p.commentCount ?? 0,
+      liked:      !!(p.liked),
+      bookmarked: !!(p.bookmarked),
+
+      author: p.author ?? `사용자 #${p.userId ?? '?'}`,
+      viewCount:  p.viewCount ?? p.views ?? 0,
       avatar: p.avatar ?? '/abstract-profile.png',
       timestamp: toRelativeTime(p.createdAt),
-      tags: Array.isArray(p.tags) ? p.tags : [],        // ['테스트'] 형태 지원
+      tags: Array.isArray(p.tags) ? p.tags : [],
     }))
   } catch (e) {
     console.error(e)
@@ -153,12 +176,44 @@ async function fetchPosts() {
   }
 }
 
-// createdAt → “n분/시간/일 전” 간단 변환
+// ❤️ 좋아요 토글
+async function toggleLike(p) {
+  try {
+    if (!p.liked) {
+      const r = await postAPI.like(p.id)           // PUT /posts/{id}/like
+      p.likes = r.likes ?? p.likes + 1
+      p.liked = r.liked ?? true
+    } else {
+      const r = await postAPI.unlike(p.id)         // DELETE /posts/{id}/like
+      p.likes = r.likes ?? Math.max(0, p.likes - 1)
+      p.liked = r.liked ?? false
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+// 🔖 북마크 토글
+async function toggleBookmark(p) {
+  try {
+    if (!p.bookmarked) {
+      const r = await postAPI.bookmark(p.id)       // PUT /posts/{id}/bookmark
+      p.bookmarked = r.bookmarked ?? true
+    } else {
+      const r = await postAPI.unbookmark(p.id)     // DELETE /posts/{id}/bookmark
+      p.bookmarked = r.bookmarked ?? false
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+// createdAt → “n분/시간/일 전”
 function toRelativeTime(iso) {
   if (!iso) return ''
   const then = new Date(iso).getTime()
   const now = Date.now()
-  const diff = Math.max(0, Math.floor((now - then) / 1000)) // sec
+  const diff = Math.max(0, Math.floor((now - then) / 1000))
   if (diff < 60) return `${diff}초 전`
   const m = Math.floor(diff / 60)
   if (m < 60) return `${m}분 전`
@@ -168,14 +223,10 @@ function toRelativeTime(iso) {
   return `${d}일 전`
 }
 
-
-
-
-// 기존 코드
+// 필터/정렬
 const visiblePosts = computed(() => {
   let arr = posts.value.slice()
 
-  // 검색
   const q = (props.filters.query || '').trim().toLowerCase()
   if (q) {
     arr = arr.filter(
@@ -186,25 +237,21 @@ const visiblePosts = computed(() => {
     )
   }
 
-  // 카테고리
   if (props.filters.category && props.filters.category !== 'all') {
     const target = catMap[props.filters.category]
     if (target) arr = arr.filter(p => p.category === target)
   }
 
-  // 정렬
   switch (props.sort) {
     case 'popular':
-      arr.sort((a, b) => b.likes - a.likes)
+      arr.sort((a, b) => b.viewCount - a.viewCount)
       break
     case 'recommended':
-      arr.sort((a, b) => Number(b.isRecommended) - Number(a.isRecommended))
+      arr.sort((a, b) => b.likes - a.likes)
       break
     default:
-      // 'latest'는 샘플 데이터 순서를 유지
       break
   }
-
   return arr
 })
 </script>

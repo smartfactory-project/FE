@@ -5,9 +5,9 @@
     <main class="container mx-auto px-4 py-8">
       <PostDetail :post-id="id" :key="id" />
 
-      <section id="comments" class="mt-8">
+      <!-- <section id="comments" class="mt-8">
         <CommentsSection :post-id="id" :key="`c-${id}`" />
-      </section>
+      </section> -->
     </main>
   </div>
 </template>

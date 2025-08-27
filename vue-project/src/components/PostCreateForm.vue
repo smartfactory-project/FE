@@ -212,19 +212,10 @@ function handleRemoveTag(tagToRemove) {
   tags.value = tags.value.filter(t => t !== tagToRemove)
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   // 간단 유효성
   if (!title.value.trim() || !content.value.trim() || !category.value) return
-
-  // 실제 앱: API 호출 후 성공 시 이동
-  console.log('게시글 저장:', {
-    title: title.value,
-    content: content.value,
-    category: category.value,
-    tags: tags.value,
-  })
-  savePost()
-  router.push('/posts')
+  await savePost()
 }
 
 async function savePost() {
@@ -235,13 +226,12 @@ async function savePost() {
        category: category.value,
        tags: tags.value,
      }
-     const { data } = await postAPI.create(payload)
-     // 보통 data.id(생성된 게시글 PK)를 반환하도록 백엔드 구성
-     console.log(data)
-     if (data?.id) {
-       router.push({ name: 'post-detail', params: { id: data.id } })
+     const created = await postAPI.create(payload) // created = 서버 JSON
+     if (created?.id) {
+     // name이 없을 수 있으니 경로로 이동하는 게 안전
+     router.push(`/posts/${created.id}`)
      } else {
-       router.push('/posts')
+     router.push('/posts')
      }
    } catch (e) {
      console.error(e)

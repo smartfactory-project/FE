@@ -98,6 +98,12 @@
         </div>
       </CardContent>
     </Card>
+    <CommentsSection
+      v-if="post"
+      :postId="post.id"
+      @loaded="updateCommentCount"
+      @created="updateCommentCount"
+    />
   </div>
 </template>
 
@@ -105,6 +111,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Heart, MessageCircle, Share2, Bookmark, ArrowLeft, TrendingUp } from 'lucide-vue-next'
+import CommentsSection from '@/components/CommentsSection.vue' 
 
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
@@ -117,10 +124,31 @@ import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue'
 
 import postAPI from '@/services/post.js'
 import { useRoute } from 'vue-router'
-
 const route = useRoute()
-onMounted(() => loadPost(route.params.id))
-watch(() => route.params.id, (id) => loadPost(id))
+const postId = computed(() => Number(route.params.id))
+
+onMounted(async () => {
+  if (!postId.value) return
+  try {
+   await postAPI.view(postId.value)
+   await Promise.all([
+     loadPost(postId.value),
+     loadLikeStatus(postId.value),
+     loadBookmarkStatus(postId.value),
+   ])
+ } catch (e) {
+   console.error(e)
+ }
+})
+
+watch(postId, async (id) => {
+  if (!id) return
+  await Promise.all([
+    loadPost(id),
+    loadLikeStatus(id),
+    loadBookmarkStatus(id),
+  ])
+})
 
 const catMap = {
   productivity: '생산성',
@@ -147,7 +175,7 @@ async function loadPost(id) {
     imgErr.value = false
 
     const data = await postAPI.detail(id)
-
+    console.log(data)
     // 서버 필드 → 화면 필드 매핑
     post.value = {
       id: data.id,
@@ -162,16 +190,15 @@ async function loadPost(id) {
       isRecommended: data.isRecommended ?? false,
     }
 
-    // 액션 초기화
-    likes.value = data.likes ?? 0
-    isLiked.value = false
-    isBookmarked.value = false
-  } catch (e) {
-    console.error(e)
-    errorMsg.value = e?.response?.data?.message || '게시글을 불러오지 못했습니다.'
-  } finally {
-    loading.value = false
+    } catch (e) {
+      console.error(e)
+      errorMsg.value = e?.response?.data?.message || '게시글을 불러오지 못했습니다.'
+    } finally {
+      loading.value = false
+    }
   }
+function updateCommentCount(n) {
+  if (post.value) post.value.comments = n
 }
 
 // 상대시간
@@ -189,13 +216,46 @@ function toRelativeTime(iso) {
   return `${d}일 전`
 }
 
-// 액션 핸들러 (로컬 토글; 실제 서버 연동 시 PATCH API 붙이면 됨)
-function handleLike() {
-  isLiked.value = !isLiked.value
-  likes.value = isLiked.value ? likes.value + 1 : Math.max(0, likes.value - 1)
+async function loadLikeStatus(id) {
+  try {
+    const status = await postAPI.likeStatus(id) // GET /posts/{id}/like
+    likes.value   = status.likes ?? 0
+    isLiked.value = !!status.liked
+  } catch (e) {
+    console.error(e)
+    // 비로그인/오류 시 기본값 유지
+    likes.value   = likes.value ?? 0
+    isLiked.value = false
+  }
 }
 
-function handleBookmark() {
-  isBookmarked.value = !isBookmarked.value
+async function handleLike() {
+  if (!post.value) return
+  try {
+    if (!isLiked.value) {
+      const r = await postAPI.like(post.value.id)    // PUT /posts/{id}/like
+      likes.value   = r.likes
+      isLiked.value = r.liked
+    } else {
+      const r = await postAPI.unlike(post.value.id)  // DELETE /posts/{id}/like
+      likes.value   = r.likes
+      isLiked.value = r.liked
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function loadBookmarkStatus(id) {
+  const r = await postAPI.bookmarkStatus(id) // ✅ id만
+  isBookmarked.value = !!r.bookmarked
+}
+
+async function handleBookmark() {
+  if (!post.value) return
+  const r = isBookmarked.value
+    ? await postAPI.unbookmark(post.value.id)
+    : await postAPI.bookmark(post.value.id)
+  isBookmarked.value = r.bookmarked
 }
 </script>
