@@ -28,6 +28,7 @@
 
           <button
             class="text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200 px-3 py-2 rounded-md"
+            @click="goMyPage"
           >
             <User class="w-4 h-4 mr-2 inline-block" />
             마이페이지
@@ -87,6 +88,15 @@ const isAuth = computed(() => {
   // 없으면 localStorage 토큰 존재로 간단 판별 (비반응성)
   return !!localStorage.getItem('token')
 })
+
+async function goMyPage() {
+  if (isAuth.value) {
+    router.push('/mypage')
+  } else {
+    // 로그인 후 돌아올 목적지 전달
+    router.push({ path: '/login', query: { redirect: '/mypage' } })
+  }
+}
 
 function handleLogout() {
   if (auth?.logout) {
