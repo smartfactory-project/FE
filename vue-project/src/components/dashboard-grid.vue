@@ -14,7 +14,9 @@
               <p class="text-3xl font-bold text-foreground mt-1">{{ stat.value }}</p>
               <p class="text-sm text-emerald-600 font-medium mt-1">{{ stat.change }}</p>
             </div>
-            <div class="w-12 h-12 bg-gradient-to-br from-secondary/10 to-accent/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+            <div
+              class="w-12 h-12 bg-gradient-to-br from-secondary/10 to-accent/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200"
+            >
               <component :is="stat.icon" class="w-6 h-6 text-secondary" />
             </div>
           </div>
@@ -47,13 +49,22 @@
         <div class="px-6 pb-6 pt-0">
           <div class="flex items-center justify-between">
             <p class="text-sm text-muted-foreground font-medium">{{ item.stats }}</p>
-            <RouterLink :to="item.href">
+
+            <!-- 토큰 여부에 따라 분기 -->
+            <RouterLink v-if="hasToken" :to="item.href">
               <button
                 class="px-3 py-2 rounded-md border border-border text-foreground font-medium transition-all duration-300 bg-transparent group-hover:bg-gradient-to-r group-hover:from-secondary group-hover:to-accent group-hover:text-white group-hover:border-transparent"
               >
                 보기
               </button>
             </RouterLink>
+            <button
+              v-else
+              @click="showModal = true"
+              class="px-3 py-2 rounded-md border border-border text-foreground font-medium transition-all duration-300 bg-transparent group-hover:bg-gradient-to-r group-hover:from-secondary group-hover:to-accent group-hover:text-white group-hover:border-transparent"
+            >
+              보기
+            </button>
           </div>
         </div>
       </div>
@@ -72,7 +83,9 @@
             :key="index"
             class="flex items-center space-x-4 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-all duration-200 group"
           >
-            <div class="w-10 h-10 bg-gradient-to-br from-secondary/10 to-accent/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+            <div
+              class="w-10 h-10 bg-gradient-to-br from-secondary/10 to-accent/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200"
+            >
               <UserIcon class="w-5 h-5 text-secondary" />
             </div>
             <div class="flex-1">
@@ -83,6 +96,25 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 로그인 모달 -->
+    <div
+      v-if="showModal"
+      class="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50"
+    >
+      <div
+        class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center animate-fadeIn"
+      >
+        <h2 class="text-2xl font-bold text-foreground mb-4">로그인이 필요합니다</h2>
+        <p class="text-muted-foreground mb-6">이 기능을 사용하려면 먼저 로그인해주세요.</p>
+        <button
+          @click="showModal = false"
+          class="px-6 py-3 rounded-lg bg-gradient-to-r from-secondary to-accent text-white font-medium shadow-md hover:shadow-lg transition-all duration-300"
+        >
+          확인
+        </button>
       </div>
     </div>
   </div>
@@ -100,6 +132,13 @@ import {
   Activity,
   User as UserIcon,
 } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+
+// 토큰 확인
+const hasToken = computed(() => !!localStorage.getItem('token'))
+
+// 모달 상태
+const showModal = ref(false)
 
 const dashboardItems = [
   {
@@ -150,3 +189,19 @@ const activities = [
   { user: '정수진', action: '차트 리포트를 생성했습니다', time: '2시간 전', type: 'report' },
 ]
 </script>
+
+<style scoped>
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+</style>

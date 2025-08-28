@@ -101,9 +101,11 @@ async function goMyPage() {
 function handleLogout() {
   if (auth?.logout) {
     auth.logout()
+    window.location.reload()
   } else {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    
   }
   router.push('/')
 }
