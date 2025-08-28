@@ -2,9 +2,11 @@
   <div class="space-y-6">
     <div class="flex justify-between items-center">
       <h2 class="text-2xl font-bold text-foreground">최신 게시글</h2>
-      <Button class="bg-primary hover:bg-primary/90">
-        <Plus class="w-4 h-4 mr-2" />새 게시글 작성
-      </Button>
+      <RouterLink to="/posts/create">
+        <Button class="bg-primary hover:bg-primary/90">
+          <Plus class="w-4 h-4 mr-2" />새 게시글 작성
+        </Button>
+      </RouterLink>
     </div>
 
     <div class="space-y-4">
@@ -17,14 +19,13 @@
           <div class="flex items-start justify-between">
             <div class="flex items-center space-x-3">
               <Avatar class="w-10 h-10">
-                <!-- <AvatarImage v-if="post.avatar" :src="post.avatar" :alt="post.author" /> -->
-                <!-- <AvatarImage :src="post.avatar || '/placeholder.svg'" :alt="post.author" /> -->
-                 <AvatarImage
-                    v-if="post.avatar && !imgErr[post.id]"
-                    :src="post.avatar"
-                    :alt="post.author"
-                    @error="imgErr[post.id] = true"
-                    />
+                <AvatarImage
+                  v-if="post.avatar && !imgErr[post.id]"
+                  :src="post.avatar"
+                  :alt="post.author"
+                  class="object-contain object-center"
+                  @error="imgErr[post.id] = true"
+                />
                 <AvatarFallback>{{ post.author?.[0] || '?' }}</AvatarFallback>
               </Avatar>
               <div>
@@ -41,16 +42,28 @@
                 <p class="text-sm text-muted-foreground">{{ post.timestamp }}</p>
               </div>
             </div>
-            <Badge variant="outline" class="bg-background/50">
-              {{ post.category }}
-            </Badge>
+            <div class="flex items-center gap-2">
+              <Badge variant="outline" class="bg-background/50">{{ post.category }}</Badge>
+              <Button
+                v-if="owns(post)"                               
+                variant="ghost"
+                size="sm"
+                class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                @click.stop="handleDeleteClick(post.id)"               
+              >
+                <Trash2 class="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
         <CardContent class="pt-0">
-          <h2 class="text-xl font-bold text-foreground mb-3 hover:text-primary cursor-pointer transition-colors">
+          <RouterLink
+            :to="`/posts/${post.id}`"
+            class="block text-xl font-bold text-foreground mb-3 hover:text-primary transition-colors"
+          >
             {{ post.title }}
-          </h2>
+          </RouterLink>
           <p class="text-muted-foreground mb-4 line-clamp-3">{{ post.content }}</p>
 
           <div class="flex flex-wrap gap-2 mb-4">
@@ -62,33 +75,72 @@
             >
               #{{ tag }}
             </Badge>
+            
           </div>
 
+          <!-- 액션 -->
           <div class="flex items-center justify-between pt-4 border-t border-border">
             <div class="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-red-500">
-                <Heart class="w-4 h-4 mr-1" />{{ post.likes }}
+              
+              <!-- ❤️ 좋아요: 상태 색 + 클릭 토글 -->
+              <Button
+                variant="ghost" size="sm"
+                :class="[post.liked ? 'text-red-500' : 'text-muted-foreground', 'hover:text-red-500']"
+                @click="toggleLike(post)"
+              >
+                <Heart class="w-4 h-4 mr-1" :class="post.liked ? 'fill-current' : ''" />
+                {{ post.likes }}
               </Button>
+
+              <!-- 💬 댓글 수 -->
               <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-blue-500">
-                <MessageCircle class="w-4 h-4 mr-1" />{{ post.comments }}
+                <MessageCircle class="w-4 h-4 mr-1" />
+                {{ post.comments }}
               </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                class="text-muted-foreground cursor-default"
+                tabindex="-1"
+              >
+                <Eye class="w-4 h-4 mr-1" />
+                {{ post.viewCount }}
+              </Button>
+
               <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-green-500">
                 <Share2 class="w-4 h-4 mr-1" />공유
               </Button>
             </div>
-            <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-yellow-500">
-              <Bookmark class="w-4 h-4" />
+            
+
+            <!-- 🔖 북마크: 상태 색 + 클릭 토글 -->
+            <Button
+              variant="ghost" size="sm"
+              :class="[post.bookmarked ? 'text-yellow-500' : 'text-muted-foreground', 'hover:text-yellow-500']"
+              @click="toggleBookmark(post)"
+            >
+              <Bookmark class="w-4 h-4" :class="post.bookmarked ? 'fill-current' : ''" />
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
   </div>
+  <DeletePostDialog
+  v-model:open="deleteOpen"
+  @confirm="confirmDelete"
+  @cancel="cancelDelete"
+  />
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { Plus, Heart, MessageCircle, Share2, Bookmark, TrendingUp } from 'lucide-vue-next'
+import { RouterLink } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import postAPI from '@/services/post.js'
+import { useAuthStore } from '@/stores/auth.js'  
+
+import { Plus, Heart, MessageCircle, Share2, Bookmark, TrendingUp, Eye} from 'lucide-vue-next'
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'
@@ -97,6 +149,13 @@ import Badge from '@/components/ui/Badge.vue'
 import Avatar from '@/components/ui/avatar/Avatar.vue'
 import AvatarImage from '@/components/ui/avatar/AvatarImage.vue'
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue'
+
+import { Trash2 } from 'lucide-vue-next'
+import DeletePostDialog from '@/components/DeletePostDialog.vue'
+
+const auth = useAuthStore()      
+const deleteOpen = ref(false)
+const deleteTargetId = ref(null)
 const imgErr = ref({})
 
 const props = defineProps({
@@ -104,105 +163,170 @@ const props = defineProps({
   sort: { type: String, default: 'latest' },
 })
 
-const posts = ref([
-  {
-    id: 1,
-    title: 'SAMJO 생산성 향상을 위한 새로운 워크플로우 제안',
-    content:
-      '팀 협업 효율성을 높이기 위한 새로운 워크플로우를 제안합니다. 이 방법을 통해 프로젝트 완료 시간을 30% 단축할 수 있었습니다...',
-    author: '김철수',
-    avatar: '/abstract-profile.png',
-    timestamp: '2시간 전',
-    likes: 24,
-    comments: 8,
-    category: '생산성',
-    isRecommended: true,
-    tags: ['워크플로우', '효율성', '팀워크'],
-  },
-  {
-    id: 2,
-    title: 'Q4 생산 목표 달성을 위한 전략 공유',
-    content:
-      '올해 4분기 생산 목표를 달성하기 위해 우리 팀에서 시도하고 있는 전략들을 공유합니다. 특히 품질 관리 부분에서 좋은 결과를 얻고 있습니다...',
-    author: '이영희',
-    avatar: '/confident-businesswoman.png',
-    timestamp: '4시간 전',
-    likes: 18,
-    comments: 12,
-    category: '전략',
-    isRecommended: false,
-    tags: ['목표달성', '전략', '품질관리'],
-  },
-  {
-    id: 3,
-    title: '신입사원을 위한 SAMJO 시스템 가이드',
-    content:
-      '새로 입사하신 분들을 위해 SAMJO 시스템 사용법을 정리했습니다. 처음 사용하시는 분들도 쉽게 따라할 수 있도록 스크린샷과 함께 설명드립니다...',
-    author: '박민수',
-    avatar: '/young-man.png',
-    timestamp: '6시간 전',
-    likes: 31,
-    comments: 15,
-    category: '가이드',
-    isRecommended: true,
-    tags: ['신입사원', '가이드', '시스템'],
-  },
-  {
-    id: 4,
-    title: '월간 생산성 리포트 및 개선 제안',
-    content:
-      '지난 달 생산성 데이터를 분석한 결과와 개선 방안을 제안합니다. 데이터 기반의 인사이트로 더 나은 성과를 만들어봅시다...',
-    author: '정수진',
-    avatar: '/professional-woman.png',
-    timestamp: '1일 전',
-    likes: 42,
-    comments: 23,
-    category: '분석',
-    isRecommended: false,
-    tags: ['리포트', '분석', '개선'],
-  },
-])
-
 const catMap = {
   productivity: '생산성',
   strategy: '전략',
   guide: '가이드',
   analysis: '분석',
+  discussion: '토론',
+  announcement: '공지사항',
 }
 
+const posts = ref([])
+const loading = ref(false)
+const errorMsg = ref('')
+
+onMounted(fetchPosts)
+
+async function fetchPosts() {
+  try {
+    loading.value = true
+    errorMsg.value = ''
+    const list = await postAPI.list()
+
+    posts.value = list.map((p) => ({
+      id: p.id,
+      title: p.title,
+      content: p.content,
+      category: catMap[p.category] || p.category,
+      isRecommended: !!p.isRecommended,
+
+      likes:      p.likes      ?? p.likesCount      ?? 0,
+      comments:   p.comments   ?? p.commentsCount   ?? p.commentCount ?? 0,
+      liked:      !!(p.liked),
+      bookmarked: !!(p.bookmarked),
+
+      author: p.author ?? `사용자 #${p.userId ?? '?'}`,
+      viewCount:  p.viewCount ?? p.views ?? 0,
+      avatar: p.avatar ?? '/abstract-profile.png',
+      timestamp: toRelativeTime(p.createdAt),
+      tags: Array.isArray(p.tags) ? p.tags : [],
+
+      userId: (p.userId ?? p.user_id ?? p.authorId ?? p.author_id ?? null),
+    }))
+  } catch (e) {
+    console.error(e)
+    errorMsg.value = e?.response?.data?.message || '게시글을 불러오지 못했습니다.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// ❤️ 좋아요 토글
+async function toggleLike(p) {
+  try {
+    if (!p.liked) {
+      const r = await postAPI.like(p.id)           // PUT /posts/{id}/like
+      p.likes = r.likes ?? p.likes + 1
+      p.liked = r.liked ?? true
+    } else {
+      const r = await postAPI.unlike(p.id)         // DELETE /posts/{id}/like
+      p.likes = r.likes ?? Math.max(0, p.likes - 1)
+      p.liked = r.liked ?? false
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+// 🔖 북마크 토글
+async function toggleBookmark(p) {
+  try {
+    if (!p.bookmarked) {
+      const r = await postAPI.bookmark(p.id)       // PUT /posts/{id}/bookmark
+      p.bookmarked = r.bookmarked ?? true
+    } else {
+      const r = await postAPI.unbookmark(p.id)     // DELETE /posts/{id}/bookmark
+      p.bookmarked = r.bookmarked ?? false
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+// createdAt → “n분/시간/일 전”
+function toRelativeTime(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  const now = Date.now()
+  const diff = Math.max(0, Math.floor((now - then) / 1000))
+  if (diff < 60) return `${diff}초 전`
+  const m = Math.floor(diff / 60)
+  if (m < 60) return `${m}분 전`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}시간 전`
+  const d = Math.floor(h / 24)
+  return `${d}일 전`
+}
+
+// 필터/정렬
 const visiblePosts = computed(() => {
   let arr = posts.value.slice()
 
-  // 검색
   const q = (props.filters.query || '').trim().toLowerCase()
   if (q) {
     arr = arr.filter(
       p =>
         p.title.toLowerCase().includes(q) ||
         p.content.toLowerCase().includes(q) ||
-        p.tags.some(t => t.toLowerCase().includes(q)),
+        (Array.isArray(p.tags) && p.tags.some(t => (t || '').toLowerCase().includes(q))),
     )
   }
 
-  // 카테고리
   if (props.filters.category && props.filters.category !== 'all') {
     const target = catMap[props.filters.category]
     if (target) arr = arr.filter(p => p.category === target)
   }
 
-  // 정렬
   switch (props.sort) {
     case 'popular':
-      arr.sort((a, b) => b.likes - a.likes)
+      arr.sort((a, b) => b.viewCount - a.viewCount)
       break
     case 'recommended':
-      arr.sort((a, b) => Number(b.isRecommended) - Number(a.isRecommended))
+      arr.sort((a, b) => b.likes - a.likes)
       break
     default:
-      // 'latest'는 샘플 데이터 순서를 유지
       break
   }
-
   return arr
 })
+
+const currentUserId = computed(() =>
+   auth?.user?.id ??
+   auth?.user?.userId ??
+   auth?.user?.user_id ??
+   null
+ )
+ // 백엔드가 어떤 키로 글쓴이 id를 주든 안전하게 추출
+ function getPostUserId(p) {
+   return p.userId ?? p.user_id ?? p.authorId ?? p.author_id ?? null
+ }
+ // 소유자 판별 (렌더링 시점 동적 계산)
+ function owns(p) {
+   const me  = currentUserId.value
+   const pid = getPostUserId(p)
+   if (me != null && pid != null && String(me) === String(pid)) return true
+   // (옵션) id가 없을 땐 username로 비교
+   const myName = auth?.user?.username ?? auth?.user?.name ?? null
+   const postAuthorName = p.authorUsername ?? p.author ?? null
+   return !!(myName && postAuthorName && myName === postAuthorName)
+ }
+
+function handleDeleteClick(id) {
+  deleteTargetId.value = id
+  deleteOpen.value = true
+}
+
+async function confirmDelete() {
+  try {
+    await postAPI.remove(deleteTargetId.value)
+    deleteOpen.value = false
+    await fetchPosts() // 목록 새로고침
+  } catch (e) {
+    console.error(e)
+    alert(e?.response?.data?.message || '삭제에 실패했습니다.')
+  }
+}
+function cancelDelete() { deleteOpen.value = false }
+
 </script>
