@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import Header from "@/components/Header.vue"
+import Header from "@/components/header.vue"
 import ChartsOverview from "@/components/ChartsOverview.vue"
 import ProductionCharts from "@/components/ProductionCharts.vue"
 import QualityCharts from "@/components/QualityCharts.vue"

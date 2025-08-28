@@ -7,7 +7,7 @@
       </CardHeader>
       <CardContent class="p-4">
         <div class="h-80">
-          <canvas ref="efficiencyChart"></canvas>
+          <ChartLine :chart-data="efficiencyData" :chart-options="efficiencyOptions" />
         </div>
       </CardContent>
     </Card>
@@ -18,8 +18,8 @@
         <CardTitle class="text-xl text-foreground">부서별 성과 비교</CardTitle>
       </CardHeader>
       <CardContent class="p-4">
-        <div class="h-80">
-          <canvas ref="departmentChart"></canvas>
+        <div class="h-70">
+          <ChartRadar :chart-data="departmentData" :chart-options="departmentOptions" />
         </div>
       </CardContent>
     </Card>
@@ -58,61 +58,68 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue"
-import { Chart, registerables } from "chart.js"
+import { ref, onMounted } from "vue"
+import { Chart as ChartJS, Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, RadialLinearScale } from "chart.js"
+import { Line, Radar } from "vue-chartjs"
 import Card from "@/components/ui/card/Card.vue"
 import CardContent from "@/components/ui/card/CardContent.vue"
 import CardHeader from "@/components/ui/card/CardHeader.vue"
 import CardTitle from "@/components/ui/card/CardTitle.vue"
+import apiClient from "@/components/apiClient.js"
 
-Chart.register(...registerables)
+ChartJS.register(Title, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, RadialLinearScale)
 
-const efficiencyChart = ref(null)
-const departmentChart = ref(null)
+// vue-chartjs 컴포넌트
+const ChartLine = Line
+const ChartRadar = Radar
 
-// 데이터
-const performanceData = [
-  { month: "1월", efficiency: 85.2, output: 18500 },
-  { month: "2월", efficiency: 87.1, output: 19200 },
-  { month: "3월", efficiency: 91.3, output: 21300 },
-  { month: "4월", efficiency: 89.8, output: 20800 },
-  { month: "5월", efficiency: 92.1, output: 22100 },
-  { month: "6월", efficiency: 94.4, output: 23400 },
-  { month: "7월", efficiency: 93.2, output: 24200 },
-  { month: "8월", efficiency: 91.8, output: 23800 },
-  { month: "9월", efficiency: 95.1, output: 25100 },
-  { month: "10월", efficiency: 92.6, output: 24600 },
-  { month: "11월", efficiency: 96.2, output: 26200 },
-  { month: "12월", efficiency: 89.2, output: 24847 },
-]
+// 효율성 vs 생산량 reactive
+const efficiencyData = ref({ labels: [], datasets: [] })
+const efficiencyOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: {
+    y: { type: "linear", position: "left", title: { display: true, text: "생산량" }, grid: { color: "#e2e8f0" } },
+    y1: { type: "linear", position: "right", min: 0, title: { display: true, text: "효율성 (%)" }, grid: { drawOnChartArea: false } },
+  },
+  plugins: { legend: { position: "top" }, tooltip: { mode: "index", intersect: false } },
+}
 
-const departmentPerformance = [
-  { department: "생산성", A: 92, B: 88 },
-  { department: "품질", A: 96, B: 94 },
-  { department: "효율성", A: 89, B: 85 },
-  { department: "안전성", A: 98, B: 95 },
-  { department: "혁신", A: 78, B: 82 },
-  { department: "협업", A: 85, B: 88 },
-]
+// 부서별 성과 비교 하드코딩
+const departmentData = ref({
+  labels: ["생산성", "품질", "효율성", "안전성", "혁신", "협업"],
+  datasets: [
+    { label: "현재 분기", data: [92, 96, 89, 98, 78, 85], backgroundColor: "rgba(59,130,246,0.3)", borderColor: "#3b82f6", borderWidth: 2 },
+    { label: "이전 분기", data: [88, 94, 85, 95, 82, 88], backgroundColor: "rgba(16,185,129,0.2)", borderColor: "#10b981", borderWidth: 2 },
+  ],
+})
+const departmentOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: { r: { angleLines: { color: "#e2e8f0" }, grid: { color: "#e2e8f0" }, suggestedMin: 0, suggestedMax: 100 } },
+  plugins: { legend: { position: "top" }, tooltip: { mode: "index", intersect: false } },
+}
 
-onMounted(() => {
-  // 효율성 vs 생산량 (bar + line, dual y-axis)
-  new Chart(efficiencyChart.value, {
-    type: "bar",
-    data: {
-      labels: performanceData.map(d => d.month),
+onMounted(async () => {
+  try {
+    // API에서 효율성 vs 생산량 데이터 가져오기
+    const res = await apiClient.get("/production/performanceMonthly")
+    const data = Array.isArray(res.data) ? res.data : []
+
+    efficiencyData.value = {
+      labels: data.map(d => d.month),
       datasets: [
         {
           type: "bar",
           label: "생산량",
-          data: performanceData.map(d => d.output),
+          data: data.map(d => d.output),
           backgroundColor: "#3b82f6",
           yAxisID: "y",
         },
         {
           type: "line",
           label: "효율성 (%)",
-          data: performanceData.map(d => d.efficiency),
+          data: data.map(d => d.efficiency),
           borderColor: "#10b981",
           backgroundColor: "rgba(16,185,129,0.2)",
           fill: true,
@@ -120,71 +127,9 @@ onMounted(() => {
           yAxisID: "y1",
         },
       ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          type: "linear",
-          position: "left",
-          title: { display: true, text: "생산량" },
-          grid: { color: "#e2e8f0" },
-        },
-        y1: {
-          type: "linear",
-          position: "right",
-          title: { display: true, text: "효율성 (%)" },
-          grid: { drawOnChartArea: false },
-          min: 0,
-          max: 100,
-        },
-      },
-      plugins: {
-        legend: { position: "top" },
-        tooltip: { mode: "index", intersect: false },
-      },
-    },
-  })
-
-  // 부서별 성과 비교 (radar)
-  new Chart(departmentChart.value, {
-    type: "radar",
-    data: {
-      labels: departmentPerformance.map(d => d.department),
-      datasets: [
-        {
-          label: "현재 분기",
-          data: departmentPerformance.map(d => d.A),
-          backgroundColor: "rgba(59,130,246,0.3)",
-          borderColor: "#3b82f6",
-          borderWidth: 2,
-        },
-        {
-          label: "이전 분기",
-          data: departmentPerformance.map(d => d.B),
-          backgroundColor: "rgba(16,185,129,0.2)",
-          borderColor: "#10b981",
-          borderWidth: 2,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: "top" },
-        tooltip: { mode: "index", intersect: false },
-      },
-      scales: {
-        r: {
-          angleLines: { color: "#e2e8f0" },
-          grid: { color: "#e2e8f0" },
-          suggestedMin: 0,
-          suggestedMax: 100,
-        },
-      },
-    },
-  })
+    }
+  } catch (err) {
+    console.error("API 호출 실패:", err)
+  }
 })
 </script>
