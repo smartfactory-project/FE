@@ -7,11 +7,7 @@
       </CardHeader>
       <CardContent class="p-4">
         <div class="w-full h-64">
-          <ChartPie
-            :chart-data="pieChartData"
-            :chart-options="pieChartOptions"
-            class="w-full h-full"
-          />
+          <ChartPie :chart-data="pieChartData" :chart-options="pieChartOptions" class="w-full h-full" />
         </div>
       </CardContent>
     </Card>
@@ -23,11 +19,7 @@
       </CardHeader>
       <CardContent class="p-4">
         <div class="w-full h-64">
-          <ChartLine
-            :chart-data="areaChartData"
-            :chart-options="areaChartOptions"
-            class="w-full h-full"
-          />
+          <ChartLine :chart-data="areaChartData" :chart-options="areaChartOptions" class="w-full h-full" />
         </div>
       </CardContent>
     </Card>
@@ -42,81 +34,72 @@ import CardTitle from "@/components/ui/card/CardTitle.vue"
 
 import { Chart as ChartJS, Title, Tooltip, Legend, ArcElement, CategoryScale, LinearScale, PointElement, LineElement, Filler } from "chart.js"
 import { Doughnut, Line } from "vue-chartjs"
+import { ref, onMounted } from "vue"
+import apiClient from "@/components/apiClient.js"
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement, CategoryScale, LinearScale, PointElement, LineElement, Filler)
 
-// Pie Chart Wrapper → Doughnut 사용
+// 컴포넌트
 const ChartPie = Doughnut
-
-// Line/Area Chart Wrapper
 const ChartLine = Line
 
-// Pie Data
-const qualityDistributionData = [
-  { name: "합격", value: 96.8, color: "#10b981" },
-  { name: "재작업", value: 2.1, color: "#f59e0b" },
-  { name: "불량", value: 1.1, color: "#ef4444" },
-]
-
-const pieChartData = {
-  labels: qualityDistributionData.map(d => d.name),
-  datasets: [
-    {
-      data: qualityDistributionData.map(d => d.value),
-      backgroundColor: qualityDistributionData.map(d => d.color),
-      borderWidth: 1,
-    },
-  ],
-}
-
+// Pie Chart reactive
+const pieChartData = ref({ labels: [], datasets: [] })
 const pieChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
-  plugins: {
-    legend: { position: "top" },
-    tooltip: { mode: "index", intersect: false },
-  },
+  plugins: { legend: { position: "top" }, tooltip: { mode: "index", intersect: false } },
 }
 
-// Area Data
-const qualityTrendData = [
-  { week: "1주", quality: 94.2 },
-  { week: "2주", quality: 95.1 },
-  { week: "3주", quality: 96.3 },
-  { week: "4주", quality: 97.1 },
-  { week: "5주", quality: 96.8 },
-  { week: "6주", quality: 98.2 },
-  { week: "7주", quality: 97.5 },
-  { week: "8주", quality: 96.8 },
-]
-
-const areaChartData = {
-  labels: qualityTrendData.map(d => d.week),
-  datasets: [
-    {
-      label: "품질률 (%)",
-      data: qualityTrendData.map(d => d.quality),
-      fill: true,
-      borderColor: "#10b981",
-      backgroundColor: "rgba(16, 185, 129, 0.3)",
-      tension: 0.3,
-      pointRadius: 4,
-      pointBackgroundColor: "#10b981",
-      borderWidth: 2,
-    },
-  ],
-}
-
+// Area Chart reactive
+const areaChartData = ref({ labels: [], datasets: [] })
 const areaChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
-  plugins: {
-    legend: { position: "top" },
-    tooltip: { mode: "index", intersect: false },
-  },
+  plugins: { legend: { position: "top" }, tooltip: { mode: "index", intersect: false } },
   scales: {
-    x: { grid: { color: "#e2e8f0" } },
-    y: { min: 90, max: 100, grid: { color: "#e2e8f0" } },
+    x: { type: "category", grid: { color: "#e2e8f0" } }, // category로 지정
+    y: { min: 80, max: 100, grid: { color: "#e2e8f0" } },
   },
 }
+
+onMounted(async () => {
+  try {
+    // 품질 분포 API 호출
+    const pieRes = await apiClient.get("/quality/distribution")
+    const pieData = Array.isArray(pieRes.data) ? pieRes.data : []
+    pieChartData.value = {
+      labels: pieData.map(d => d.name),
+      datasets: [
+        {
+          data: pieData.map(d => Number(d.value)),
+          backgroundColor: pieData.map(d => d.color),
+          borderWidth: 1,
+        },
+      ],
+    }
+
+    // 품질률 추이 API 호출
+    const areaRes = await apiClient.get("/quality/qualityPer")
+    const areaData = Array.isArray(areaRes.data) ? areaRes.data : []
+    areaChartData.value = {
+      labels: areaData.map(d => Number(d.month)), // 숫자로 변환
+      datasets: [
+        {
+          label: "품질률 (%)",
+          data: areaData.map(d => Number(d.rate)),
+          fill: true,
+          borderColor: "#10b981",
+          backgroundColor: "rgba(16, 185, 129, 0.3)",
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: "#10b981",
+          borderWidth: 2,
+        },
+      ],
+    }
+  } catch (err) {
+    console.error("API 호출 실패:", err)
+  }
+})
 </script>
