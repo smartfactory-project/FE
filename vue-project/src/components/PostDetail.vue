@@ -125,7 +125,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth.js' 
 import { RouterLink } from 'vue-router'
-import { Heart, MessageCircle, Share2, Bookmark, ArrowLeft, TrendingUp } from 'lucide-vue-next'
+import { Heart, MessageCircle, Share2, Bookmark, ArrowLeft, TrendingUp, Eye } from 'lucide-vue-next'
 import CommentsSection from '@/components/CommentsSection.vue' 
 
 import Card from '@/components/ui/card/Card.vue'
@@ -210,7 +210,7 @@ async function loadPost(id) {
       tags: Array.isArray(data.tags) ? data.tags : [],
       comments: data.comments ?? 0,
       isRecommended: data.isRecommended ?? false,
-      
+      viewCount: data.viewCount ?? data.views ?? 0,
       userId: (data.userId ?? data.user_id ?? data.authorId ?? data.author_id ?? null),
     }
 

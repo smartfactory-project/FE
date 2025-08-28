@@ -75,11 +75,13 @@
             >
               #{{ tag }}
             </Badge>
+            
           </div>
 
           <!-- 액션 -->
           <div class="flex items-center justify-between pt-4 border-t border-border">
             <div class="flex items-center space-x-4">
+              
               <!-- ❤️ 좋아요: 상태 색 + 클릭 토글 -->
               <Button
                 variant="ghost" size="sm"
@@ -96,10 +98,21 @@
                 {{ post.comments }}
               </Button>
 
+              <Button
+                variant="ghost"
+                size="sm"
+                class="text-muted-foreground cursor-default"
+                tabindex="-1"
+              >
+                <Eye class="w-4 h-4 mr-1" />
+                {{ post.viewCount }}
+              </Button>
+
               <Button variant="ghost" size="sm" class="text-muted-foreground hover:text-green-500">
                 <Share2 class="w-4 h-4 mr-1" />공유
               </Button>
             </div>
+            
 
             <!-- 🔖 북마크: 상태 색 + 클릭 토글 -->
             <Button
@@ -127,7 +140,7 @@ import { ref, computed, onMounted } from 'vue'
 import postAPI from '@/services/post.js'
 import { useAuthStore } from '@/stores/auth.js'  
 
-import { Plus, Heart, MessageCircle, Share2, Bookmark, TrendingUp } from 'lucide-vue-next'
+import { Plus, Heart, MessageCircle, Share2, Bookmark, TrendingUp, Eye} from 'lucide-vue-next'
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
 import CardContent from '@/components/ui/card/CardContent.vue'

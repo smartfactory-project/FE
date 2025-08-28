@@ -56,7 +56,7 @@
               </Button>
             </RouterLink>
           </template>
-          <RouterLink to="/register">
+          <RouterLink to="/register" v-if="!isAuth">
               <button
                 class="px-3 py-2 rounded-md bg-gradient-to-r from-secondary to-accent hover:from-secondary/90 hover:to-accent/90 shadow-md hover:shadow-lg text-white transition-all duration-200"
               >
