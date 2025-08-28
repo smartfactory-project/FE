@@ -42,9 +42,18 @@
                 <p class="text-sm text-muted-foreground">{{ post.timestamp }}</p>
               </div>
             </div>
-            <Badge variant="outline" class="bg-background/50">
-              {{ post.category }}
-            </Badge>
+            <div class="flex items-center gap-2">
+              <Badge variant="outline" class="bg-background/50">{{ post.category }}</Badge>
+              <Button
+                v-if="owns(post)"                               
+                variant="ghost"
+                size="sm"
+                class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                @click.stop="handleDeleteClick(post.id)"               
+              >
+                <Trash2 class="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -105,12 +114,18 @@
       </Card>
     </div>
   </div>
+  <DeletePostDialog
+  v-model:open="deleteOpen"
+  @confirm="confirmDelete"
+  @cancel="cancelDelete"
+  />
 </template>
 
 <script setup>
 import { RouterLink } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import postAPI from '@/services/post.js'
+import { useAuthStore } from '@/stores/auth.js'  
 
 import { Plus, Heart, MessageCircle, Share2, Bookmark, TrendingUp } from 'lucide-vue-next'
 import Card from '@/components/ui/card/Card.vue'
@@ -122,6 +137,12 @@ import Avatar from '@/components/ui/avatar/Avatar.vue'
 import AvatarImage from '@/components/ui/avatar/AvatarImage.vue'
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue'
 
+import { Trash2 } from 'lucide-vue-next'
+import DeletePostDialog from '@/components/DeletePostDialog.vue'
+
+const auth = useAuthStore()      
+const deleteOpen = ref(false)
+const deleteTargetId = ref(null)
 const imgErr = ref({})
 
 const props = defineProps({
@@ -167,6 +188,8 @@ async function fetchPosts() {
       avatar: p.avatar ?? '/abstract-profile.png',
       timestamp: toRelativeTime(p.createdAt),
       tags: Array.isArray(p.tags) ? p.tags : [],
+
+      userId: (p.userId ?? p.user_id ?? p.authorId ?? p.author_id ?? null),
     }))
   } catch (e) {
     console.error(e)
@@ -254,4 +277,43 @@ const visiblePosts = computed(() => {
   }
   return arr
 })
+
+const currentUserId = computed(() =>
+   auth?.user?.id ??
+   auth?.user?.userId ??
+   auth?.user?.user_id ??
+   null
+ )
+ // 백엔드가 어떤 키로 글쓴이 id를 주든 안전하게 추출
+ function getPostUserId(p) {
+   return p.userId ?? p.user_id ?? p.authorId ?? p.author_id ?? null
+ }
+ // 소유자 판별 (렌더링 시점 동적 계산)
+ function owns(p) {
+   const me  = currentUserId.value
+   const pid = getPostUserId(p)
+   if (me != null && pid != null && String(me) === String(pid)) return true
+   // (옵션) id가 없을 땐 username로 비교
+   const myName = auth?.user?.username ?? auth?.user?.name ?? null
+   const postAuthorName = p.authorUsername ?? p.author ?? null
+   return !!(myName && postAuthorName && myName === postAuthorName)
+ }
+
+function handleDeleteClick(id) {
+  deleteTargetId.value = id
+  deleteOpen.value = true
+}
+
+async function confirmDelete() {
+  try {
+    await postAPI.remove(deleteTargetId.value)
+    deleteOpen.value = false
+    await fetchPosts() // 목록 새로고침
+  } catch (e) {
+    console.error(e)
+    alert(e?.response?.data?.message || '삭제에 실패했습니다.')
+  }
+}
+function cancelDelete() { deleteOpen.value = false }
+
 </script>

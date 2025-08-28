@@ -13,6 +13,8 @@ const routes = [
   { path: '/login', name: 'login', component: () => import('@/pages/LoginForm.vue')},
   { path: '/posts/create', name: 'post-create', component: () => import('@/views/PostCreatePage.vue'), meta: { requiresAuth: true } },
   { path: '/mypage', name: 'mypage', component: () => import('@/views/MyPage.vue'), meta: { requiresAuth: true } },
+
+  
 ]
 
 const router = createRouter({

@@ -14,6 +14,7 @@ export const postAPI = {
   unbookmark: (id) => apiClient.delete(`/posts/${id}/bookmark`).then(r => r.data),
 
   view:   async (id)     => (await apiClient.post(`/posts/${id}/view`)).data,
+  remove: async (id) => (await apiClient.delete(`/posts/${id}`)).data,
 }
 
 export default postAPI

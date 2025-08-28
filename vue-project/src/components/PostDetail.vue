@@ -38,9 +38,18 @@
               <p class="text-sm text-muted-foreground">{{ post.timestamp }}</p>
             </div>
           </div>
-          <Badge variant="outline" class="bg-background/50">
-            {{ post.category }}
-          </Badge>
+           <div class="flex items-center gap-2">
+            <Badge variant="outline" class="bg-background/50">{{ post.category }}</Badge>
+            <Button
+                v-if="owns(post)"  
+                variant="ghost"
+                size="sm"
+                class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                @click.stop="handleDeleteClick(post.id)"
+              >
+                <Trash2 class="w-4 h-4" />
+              </Button>
+           </div>
         </div>
 
         <!-- 제목 & 태그 -->
@@ -105,10 +114,16 @@
       @created="updateCommentCount"
     />
   </div>
+  <DeletePostDialog
+    v-model:open="deleteOpen"
+    @confirm="confirmDelete"
+    @cancel="cancelDelete"
+  />
 </template>
 
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth.js' 
 import { RouterLink } from 'vue-router'
 import { Heart, MessageCircle, Share2, Bookmark, ArrowLeft, TrendingUp } from 'lucide-vue-next'
 import CommentsSection from '@/components/CommentsSection.vue' 
@@ -123,9 +138,14 @@ import AvatarImage from '@/components/ui/avatar/AvatarImage.vue'
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue'
 
 import postAPI from '@/services/post.js'
-import { useRoute } from 'vue-router'
+import { Trash2 } from 'lucide-vue-next'
+import DeletePostDialog from '@/components/DeletePostDialog.vue'
+import { useRouter, useRoute } from 'vue-router'
+
 const route = useRoute()
+const router = useRouter()
 const postId = computed(() => Number(route.params.id))
+const auth = useAuthStore()  
 
 onMounted(async () => {
   if (!postId.value) return
@@ -166,6 +186,8 @@ const imgErr = ref(false)
 const likes = ref(0)
 const isLiked = ref(false)
 const isBookmarked = ref(false)
+const deleteOpen = ref(false)
+const deleteTargetId = ref(null)
 
 async function loadPost(id) {
   if (!id) return
@@ -188,6 +210,8 @@ async function loadPost(id) {
       tags: Array.isArray(data.tags) ? data.tags : [],
       comments: data.comments ?? 0,
       isRecommended: data.isRecommended ?? false,
+      
+      userId: (data.userId ?? data.user_id ?? data.authorId ?? data.author_id ?? null),
     }
 
     } catch (e) {
@@ -258,4 +282,46 @@ async function handleBookmark() {
     : await postAPI.bookmark(post.value.id)
   isBookmarked.value = r.bookmarked
 }
+const currentUserId = computed(() =>
+   auth?.user?.id ??
+   auth?.user?.userId ??
+   auth?.user?.user_id ??
+   null
+ )
+
+ // 포스트 작성자 id를 안전하게 추출 (백엔드 키명 다양성 대비)
+ function getPostUserId(p) {
+   if (!p) return null
+   return p.userId ?? p.user_id ?? p.authorId ?? p.author_id ?? null
+ }
+
+ // 소유자 판별: id 우선, 없으면 username로 보조 판별
+ function owns(p) {
+   const me  = currentUserId.value
+   const pid = getPostUserId(p)
+   if (me != null && pid != null && String(me) === String(pid)) return true
+   const myName = auth?.user?.username ?? auth?.user?.name ?? null
+   const postAuthorName = p?.authorUsername ?? p?.author ?? null
+   return !!(myName && postAuthorName && myName === postAuthorName)
+ }
+
+
+function handleDeleteClick(id) {
+  if (!owns(post.value)) return
+  deleteTargetId.value = id
+  deleteOpen.value = true
+}
+
+async function confirmDelete() {
+  try {
+    await postAPI.remove(deleteTargetId.value)
+    deleteOpen.value = false
+    router.push('/posts') // 삭제 후 목록으로 이동
+  } catch (e) {
+    console.error(e)
+    alert(e?.response?.data?.message || '삭제에 실패했습니다.')
+  }
+}
+function cancelDelete() { deleteOpen.value = false }
+
 </script>
