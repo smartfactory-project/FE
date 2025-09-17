@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-background to-muted">
-    <Header />
 
     <main class="container mx-auto px-4 py-8">
       <div class="mb-8">
@@ -27,7 +26,6 @@
 </template>
 
 <script setup>
-import Header from "@/components/Header.vue"
 import ProductionOverview from "@/components/ProductionOverview.vue"
 import ProductionMetrics from "@/components/ProductionMetrics.vue"
 import ProductionLines from "@/components/ProductionLines.vue"
