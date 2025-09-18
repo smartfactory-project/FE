@@ -1,8 +1,8 @@
 import axios from 'axios'
 
 // 백엔드 서버 주소
-const API_BASE_URL = 'http://localhost:8081/api'
-
+// const API_BASE_URL = 'http://localhost:8081/api'
+const API_BASE_URL = 'https://4f5ee791-ebb0-4db3-a345-fb3afa22ab4d.mock.pstmn.io/'
 // axios 인스턴스 생성
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
