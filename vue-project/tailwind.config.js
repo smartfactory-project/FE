@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        spoqa: ['SpoqaHanSansNeo', 'sans-serif'],
+      },
       borderColor: {
         border: "var(--border)",
       },

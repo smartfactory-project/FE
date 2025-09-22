@@ -1,0 +1,6 @@
+@font-face {
+    font-family: 'SpoqaHanSansNeo';
+    src: url('@/assets/fonts/SpoqaHanSansNeo-Bold.woff') format('woff');
+    font-weight: 800; /* Bold */
+    font-style: normal;
+}
