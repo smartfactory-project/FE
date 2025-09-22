@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-background to-muted">
-    <Header />
     <main class="container mx-auto px-4 py-8">
       <div class="mb-8">
         <h1 class="text-4xl font-bold text-foreground mb-2">일정 관리</h1>

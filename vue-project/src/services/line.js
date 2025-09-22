@@ -17,3 +17,8 @@ export async function fetchLineRoutings(carId) {
     const res = await apiClient.get(`/process/routings/${carId}`)
     return res.data
 }
+
+export async function fetchStations(factoryId, lineId) {
+    const res = await apiClient.get(`/process/routings/stations?lineId=${lineId}&factoryId=${factoryId}`)
+    return res.data
+}
