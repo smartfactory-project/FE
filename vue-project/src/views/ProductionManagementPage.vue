@@ -4,14 +4,23 @@ import { VueFlow } from "@vue-flow/core"
 import "@vue-flow/core/dist/style.css"
 import "@vue-flow/core/dist/theme-default.css"
 
-import { fetchFactories, fetchCarsByFactory, fetchLineRoutings } from "@/services/line.js"
+import {
+  fetchFactories,
+  fetchCarsByFactory,
+  fetchLineRoutings,
+  fetchStations
+} from "@/services/line.js"
+// import StationModal from "@/components/StationModal.vue";
 
 const factories = ref([])
 const cars = ref([])
+const lines = ref([])
+const stations = ref([])
+
 const selectedFactory = ref(null)
 const selectedCar = ref(null)
 const selectedLine = ref(null)
-const steps = ref([])
+
 const loading = ref(false)
 
 onMounted(async () => {
@@ -22,34 +31,45 @@ async function selectFactory(factory) {
   selectedFactory.value = factory
   selectedCar.value = null
   selectedLine.value = null
-  console.log(factory)
+  stations.value = []
   cars.value = await fetchCarsByFactory(factory.facId)
 }
 
 async function selectCar(car) {
   selectedCar.value = car
+  selectedLine.value = null
+  stations.value = []
   loading.value = true
   try {
     const data = await fetchLineRoutings(car.carId)
-    steps.value = data.nodes || []
-    selectedLine.value = { type: data.productId, steps: steps.value }
+    lines.value = data.nodes || []
   } finally {
     loading.value = false
   }
 }
 
-const selectedStep = ref(null)
-const showModal = ref(false)
+async function selectLine(line) {
+  console.log("선택한 라인:", line.lineId, line)
+  selectedLine.value = line
+  loading.value = true
+  console.log(selectedFactory.value.facId, line.lineId)
+  try {
+    const data = await fetchStations(selectedFactory.value.facId, line.lineId)
+    console.log(data)
+    stations.value = data
+  } finally {
+    loading.value = false
+  }
+}
 
-// ㄹ자형 배치 로직
-const flowElements = computed(() => {
-  if (!selectedLine.value) return { nodes: [], edges: [] }
+// ==== ㄹ자형 배치 ====
+function buildLFlow(items, idKey, labelKey, maxPerRow = 4) {
+  if (!items.length) return { nodes: [], edges: [] }
 
-  const maxPerRow = 4
   const gapX = 250
   const gapY = 150
 
-  const nodes = selectedLine.value.steps.map((step, idx) => {
+  const nodes = items.map((item, idx) => {
     const row = Math.floor(idx / maxPerRow)
     const col = idx % maxPerRow
     const actualCol = row % 2 === 0 ? col : maxPerRow - 1 - col
@@ -57,9 +77,9 @@ const flowElements = computed(() => {
     const targetPos = row % 2 === 0 ? "left" : "right"
 
     return {
-      id: String(step.routingId),
-      position: { x: actualCol * gapX, y: row * gapY },
-      data: { label: `${step.processType} (${step.lineId})`, raw: step },
+      id: String(item[idKey]),
+      position: { x: actualCol * gapX + 75 , y: row * gapY + 75 },
+      data: { label: typeof labelKey === "function" ? labelKey(item) : item[labelKey], raw: item },
       style: {
         width: 200,
         height: 100,
@@ -80,28 +100,28 @@ const flowElements = computed(() => {
   })
 
   const edges = []
-  selectedLine.value.steps.forEach((step, idx) => {
+  items.forEach((item, idx) => {
     const row = Math.floor(idx / maxPerRow)
     const col = idx % maxPerRow
     const isRowEnd =
         (col === maxPerRow - 1 && row % 2 === 0) ||
         (col === 0 && row % 2 === 1)
 
-    if (!isRowEnd && idx < selectedLine.value.steps.length - 1) {
+    if (!isRowEnd && idx < items.length - 1) {
       edges.push({
-        id: `e${step.routingId}-${selectedLine.value.steps[idx + 1].routingId}`,
-        source: String(step.routingId),
-        target: String(selectedLine.value.steps[idx + 1].routingId),
+        id: `e${items[idx][idKey]}-${items[idx + 1][idKey]}`,
+        source: String(items[idx][idKey]),
+        target: String(items[idx + 1][idKey]),
         animated: true,
         style: { stroke: "#2563eb", strokeWidth: 2 },
       })
     }
 
-    if (isRowEnd && idx < selectedLine.value.steps.length - 1) {
+    if (isRowEnd && idx < items.length - 1) {
       edges.push({
-        id: `e${step.routingId}-${selectedLine.value.steps[idx + 1].routingId}`,
-        source: String(step.routingId),
-        target: String(selectedLine.value.steps[idx + 1].routingId),
+        id: `e${items[idx][idKey]}-${items[idx + 1][idKey]}`,
+        source: String(items[idx][idKey]),
+        target: String(items[idx + 1][idKey]),
         animated: true,
         type: "step",
         style: { stroke: "#2563eb", strokeWidth: 2 },
@@ -110,16 +130,21 @@ const flowElements = computed(() => {
   })
 
   return { nodes, edges }
-})
+}
+
+const stationFlow = computed(() =>
+    buildLFlow(stations.value, "stationId", (s) => s.stationName)
+)
+
+// ==== 모달 상태 ====
+const showModal = ref(false)
+const selectedStation = ref(null)
 
 function handleNodeClick(event) {
-  selectedStep.value = event.node.data.raw
+  selectedStation.value = event.node.data.raw
   showModal.value = true
 }
-function closeModal() {
-  showModal.value = false
-  selectedStep.value = null
-}
+
 </script>
 
 <template>
@@ -152,12 +177,26 @@ function closeModal() {
       </div>
     </div>
 
-    <!-- 차트 -->
-    <div v-if="loading" class="text-center text-gray-500">로딩 중...</div>
-    <div v-else-if="selectedLine" class="h-[500px] w-full bg-gray-50 border rounded-lg">
+    <!-- 라인 선택 -->
+    <div v-if="selectedCar && lines.length" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+      <div
+          v-for="line in lines"
+          :key="line.lineId"
+          class="p-6 bg-white rounded-xl shadow hover:shadow-lg cursor-pointer border transition"
+          @click="selectLine(line)"
+          :class="{ 'border-blue-600 ring-2 ring-blue-300': selectedLine?.lineId === line.lineId }"
+      >
+        <h2 class="text-xl font-bold text-gray-800">{{ line.processType }}</h2>
+        <p class="text-sm text-gray-500">라인: {{ line.lineId }}</p>
+        <p class="text-xs text-gray-400">소요 시간: {{ line.duration }}분</p>
+      </div>
+    </div>
+
+    <!-- Station 차트 -->
+    <div v-if="stations.length" class="h-[500px] w-full bg-gray-50 border rounded-lg">
       <VueFlow
-          :nodes="flowElements.nodes"
-          :edges="flowElements.edges"
+          :nodes="stationFlow.nodes"
+          :edges="stationFlow.edges"
           fit-view
           :zoom-on-scroll="false"
           :zoom-on-double-click="false"
@@ -171,36 +210,10 @@ function closeModal() {
     </div>
 
     <!-- 모달 -->
-    <div v-if="showModal" class="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-      <div class="bg-white rounded-xl shadow-lg p-8 w-[600px] max-h-[80vh] overflow-y-auto relative">
-        <button
-            class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-            @click="closeModal"
-        >
-          ✕
-        </button>
-        <h2 class="text-2xl font-bold text-blue-700 mb-4">
-          {{ selectedStep?.processType }} ({{ selectedStep?.lineId }})
-        </h2>
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div class="bg-gray-100 p-4 rounded-lg">
-            <p class="font-semibold">Routing ID</p>
-            <p>{{ selectedStep?.routingId }}</p>
-          </div>
-          <div class="bg-gray-100 p-4 rounded-lg">
-            <p class="font-semibold">순서</p>
-            <p>{{ selectedStep?.processSeq }}</p>
-          </div>
-          <div class="bg-gray-100 p-4 rounded-lg">
-            <p class="font-semibold">라인</p>
-            <p>{{ selectedStep?.lineId }}</p>
-          </div>
-          <div class="bg-gray-100 p-4 rounded-lg">
-            <p class="font-semibold">소요 시간</p>
-            <p>{{ selectedStep?.duration }} 분</p>
-          </div>
-        </div>
-      </div>
-    </div>
+<!--    <StationModal-->
+<!--        :station="selectedStation"-->
+<!--        :show="showModal"-->
+<!--        @close="showModal = false"-->
+<!--    />-->
   </div>
 </template>

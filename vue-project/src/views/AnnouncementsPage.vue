@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-    <Header />
 
     <main class="container mx-auto px-6 py-8">
       <!-- 상단: 돌아가기 -->

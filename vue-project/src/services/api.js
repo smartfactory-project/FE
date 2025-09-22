@@ -1,11 +1,11 @@
 import axios from 'axios'
 
 // 백엔드 서버 주소
-// const API_BASE_URL = 'http://localhost:8081/api'
-const API_BASE_URL = 'https://4f5ee791-ebb0-4db3-a345-fb3afa22ab4d.mock.pstmn.io/'
+const API_BASE_URL = 'http://localhost:8081'
+// const API_BASE_URL = 'https://4f5ee791-ebb0-4db3-a345-fb3afa22ab4d.mock.pstmn.io/'
 // axios 인스턴스 생성
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL,//import.meta.env.VITE_API_BASE_URL
   headers: {
     'Content-Type': 'application/json'
   },
@@ -48,7 +48,7 @@ export const authAPI = {
   // 회원가입
   register: async (userData) => {
     try {
-      const response = await apiClient.post('/auth/register', userData)
+      const response = await apiClient.post('/api/auth/register', userData)
       
       // 회원가입 성공 시 토큰과 사용자 정보 저장
       if (response.data.token) {
@@ -70,7 +70,7 @@ export const authAPI = {
   // 로그인
   login: async (loginData) => {
     try {
-      const response = await apiClient.post('/auth/login', loginData)
+      const response = await apiClient.post('/api/auth/login', loginData)
       
       // 로그인 성공 시 토큰과 사용자 정보 저장
       if (response.data.token) {
@@ -110,7 +110,7 @@ export const authAPI = {
   // 헬스 체크
   healthCheck: async () => {
     try {
-      const response = await apiClient.get('/auth/health')
+      const response = await apiClient.get('/api/auth/health')
       return response.data
     } catch (error) {
       throw error.response?.data || { error: '서버에 연결할 수 없습니다.' }
