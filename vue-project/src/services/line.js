@@ -1,5 +1,5 @@
 import apiClient from './api.js'
-
+const API_BASE_URL = 'http://localhost:8081'
 // 공장 목록 조회
 export async function fetchFactories() {
     const res = await apiClient.get('/process/routings/factories')
@@ -21,4 +21,16 @@ export async function fetchLineRoutings(carId) {
 export async function fetchStations(factoryId, lineId) {
     const res = await apiClient.get(`/process/routings/stations?lineId=${lineId}&factoryId=${factoryId}`)
     return res.data
+}
+
+export function subscribePositionSSE(onMessage, { url =API_BASE_URL+ '/api/position/stream' } = {}) {
+    const es = new EventSource(url)
+    const onEvt = (ev) => {
+        try { onMessage(JSON.parse(ev.data)) } catch {}
+    }
+    es.addEventListener('position', onEvt)
+    return () => {
+        es.removeEventListener('position', onEvt)
+        es.close()
+    }
 }
