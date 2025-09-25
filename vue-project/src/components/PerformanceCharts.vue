@@ -12,17 +12,6 @@
       </CardContent>
     </Card>
 
-    <!-- 부서별 성과 비교 -->
-    <Card class="bg-card/50 backdrop-blur-sm border-border">
-      <CardHeader>
-        <CardTitle class="text-xl text-foreground">부서별 성과 비교</CardTitle>
-      </CardHeader>
-      <CardContent class="p-4">
-        <div class="h-70">
-          <ChartRadar :chart-data="departmentData" :chart-options="departmentOptions" />
-        </div>
-      </CardContent>
-    </Card>
 
     <!-- 종합 성과 지표 -->
     <Card class="bg-card/50 backdrop-blur-sm border-border lg:col-span-2">

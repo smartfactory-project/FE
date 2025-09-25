@@ -17,7 +17,9 @@ const routes = [
       { path: 'charts', name: 'charts', component: () => import('@/views/Charts.vue') },
       { path: 'posts', name: 'posts', component: () => import('@/views/PostsPage.vue') },
       { path: 'productionManagement', name: 'productionManagement', component: () => import('@/views/ProductionManagementPage.vue') },
+
       { path: 'cellproductionManagement', name: 'cellproductionManagement', component: () => import('@/views/CellProductionManagementPage.vue') },
+
 
       { path: 'posts/:id', name: 'post-detail', component: () => import('@/views/PostDetailPage.vue') },
       { path: 'posts/create', name: 'post-create', component: () => import('@/views/PostCreatePage.vue'), meta: { requiresAuth: true } },

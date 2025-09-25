@@ -1,22 +1,22 @@
 <template>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- 주간 생산 현황 -->
-    <Card>
+  <div class=" grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- 주간 생산 현황 카드 -->
+    <Card class="bg-card/50 backdrop-blur-sm border-border">
       <CardHeader>
-        <CardTitle>주간 생산 현황</CardTitle>
+        <CardTitle class="text-xl text-foreground font-bold">주간 생산 현황</CardTitle>
       </CardHeader>
       <CardContent>
         <div class="space-y-4">
           <div v-for="(metric, index) in weeklyMetrics" :key="index" class="flex items-center space-x-4">
             <div class="w-8 text-center">
-              <span class="text-sm font-medium text-foreground">{{ metric.day }}</span>
+              <span class="text-sm font-semibold text-foreground">{{ metric.day }}</span>
             </div>
             <div class="flex-1">
               <div class="flex justify-between text-sm mb-1">
-                <span class="text-gray-600">{{ metric.actual }}/{{ metric.target }}개</span>
+                <span class="text-gray-700 font-medium">{{ metric.actual }}/{{ metric.target }}개</span>
                 <span
                   :class="[
-                    'font-medium',
+                    'font-bold',
                     metric.efficiency >= 95 ? 'text-green-600' :
                     metric.efficiency >= 85 ? 'text-yellow-600' :
                     'text-red-600'
@@ -32,16 +32,16 @@
       </CardContent>
     </Card>
 
-    <!-- 성과 지표 -->
-    <Card>
+    <!-- 성과 지표 카드 -->
+    <Card class="bg-card/50 backdrop-blur-sm border-border">
       <CardHeader>
-        <CardTitle>성과 지표</CardTitle>
+        <CardTitle class="text-xl text-foreground font-bold">성과 지표</CardTitle>
       </CardHeader>
       <CardContent>
         <div class="grid grid-cols-2 gap-4">
           <div v-for="(metric, index) in performanceMetrics" :key="index" class="p-4 rounded-lg bg-gray-50 text-center">
             <component :is="metric.icon" class="w-6 h-6 mx-auto mb-2" :class="metric.color" />
-            <h3 class="text-sm font-medium text-gray-600 mb-1">{{ metric.title }}</h3>
+            <h3 class="text-sm font-semibold text-gray-700 mb-1">{{ metric.title }}</h3>
             <div class="flex items-center justify-center space-x-1 mb-1">
               <span class="text-2xl font-bold text-foreground">{{ metric.value }}</span>
               <span class="text-sm text-gray-600">{{ metric.unit }}</span>
@@ -56,73 +56,124 @@
         </div>
       </CardContent>
     </Card>
-
-    <!-- 부서별 현황 -->
-    <Card class="lg:col-span-2">
-      <CardHeader>
-        <CardTitle>부서별 현황</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div v-for="(dept, index) in departmentStats" :key="index" class="p-4 rounded-lg bg-gray-50">
-            <h3 class="font-semibold text-foreground mb-3">{{ dept.name }}</h3>
-            <div class="space-y-2">
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-600">출근 인원</span>
-                <span class="text-foreground">{{ dept.present }}/{{ dept.workers }}명</span>
-              </div>
-              <Progress :value="(dept.present / dept.workers) * 100" class="h-2" />
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-600">효율성</span>
-                <span
-                  :class="[
-                    'font-medium',
-                    dept.efficiency >= 95 ? 'text-green-600' :
-                    dept.efficiency >= 85 ? 'text-yellow-600' :
-                    'text-red-600'
-                  ]"
-                >
-                  {{ dept.efficiency }}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   </div>
 </template>
 
 <script setup>
-import Card from "@/components/ui/card/Card.vue"
-import CardHeader from "@/components/ui/card/CardHeader.vue"
-import CardContent from "@/components/ui/card/CardContent.vue"
-import CardTitle from "@/components/ui/card/CardTitle.vue"
-import Progress from "@/components/ui/Progress.vue"
-import Badge from "@/components/ui/Badge.vue"
-import { Users, Clock, Zap, Shield } from "lucide-vue-next"
+import { ref, watch, onMounted } from 'vue'
+import { getOverview } from '../services/statistics'
+import { Zap, Clock, Shield } from 'lucide-vue-next'
+import { useFactoryStore } from '@/stores/factoryStore.js'
+import Card from '@/components/ui/card/Card.vue'
+import CardHeader from '@/components/ui/card/CardHeader.vue'
+import CardTitle from '@/components/ui/card/CardTitle.vue'
+import CardContent from '@/components/ui/card/CardContent.vue'
+import Progress from '@/components/ui/Progress.vue'
+import Badge from '@/components/ui/Badge.vue'
 
-const weeklyMetrics = [
-  { day: "월", target: 1500, actual: 1420, efficiency: 94.7 },
-  { day: "화", target: 1500, actual: 1380, efficiency: 92.0 },
-  { day: "수", target: 1500, actual: 1510, efficiency: 100.7 },
-  { day: "목", target: 1500, actual: 1465, efficiency: 97.7 },
-  { day: "금", target: 1500, actual: 1247, efficiency: 83.1 },
-  { day: "토", target: 800, actual: 0, efficiency: 0 },
-  { day: "일", target: 800, actual: 0, efficiency: 0 },
-]
+const factoryStore = useFactoryStore()
+const weeklyMetrics = ref([])
+const performanceMetrics = ref([])
 
-const performanceMetrics = [
-  { title: "전체 효율성", value: 89.2, unit: "%", target: 90, icon: Zap, color: "text-yellow-500", trend: "+2.1%" },
-  { title: "평균 가동률", value: 87.5, unit: "%", target: 85, icon: Clock, color: "text-blue-500", trend: "+1.8%" },
-  { title: "품질 지수", value: 96.8, unit: "%", target: 95, icon: Shield, color: "text-green-500", trend: "+0.5%" },
-  { title: "인력 활용률", value: 93.3, unit: "%", target: 90, icon: Users, color: "text-purple-500", trend: "-1.2%" },
-]
+async function fetchMetrics(simulationName) {
+  try {
+    console.log('[fetchMetrics] simulationName:', simulationName)
+    const overview = await getOverview(simulationName)
+    console.log('[fetchMetrics] overview API result:', overview)
+    // 오늘 생산량 기준으로 주간 생산현황 생성
+    const baseOutput = overview?.todayOutput ?? 80
+    const days = ['월', '화', '수', '목', '금']
+    const target = 350
+    weeklyMetrics.value = days.map((day, idx) => {
+      // -5%, -2.5%, 0%, +2.5%, +5% 변동
+      const percent = 1 + (idx - 2) * 0.025
+      const actual = Math.round(baseOutput * percent)
+      const efficiency = Math.round((actual / target) * 100)
+      return { day, actual, target, efficiency }
+    })
 
-const departmentStats = [
-  { name: "생산팀", workers: 42, present: 39, efficiency: 92.8 },
-  { name: "품질관리팀", workers: 8, present: 8, efficiency: 98.1 },
-  { name: "유지보수팀", workers: 6, present: 5, efficiency: 83.3 },
-  { name: "물류팀", workers: 12, present: 11, efficiency: 91.7 },
-]
+    // 성과 지표 (인력 활용률 제외, overview 값 활용)
+    performanceMetrics.value = [
+      {
+        title: '전체 효율성',
+        value: overview?.runningRate ? overview.runningRate.toFixed(1) : '91.3',
+        unit: '%',
+        target: overview?.targetRunningRate ? overview.targetRunningRate.toFixed(1) : '90',
+        trend: '+1.3%',
+        icon: Zap,
+        color: 'text-yellow-500',
+      },
+      {
+        title: '품질 지수',
+        value: overview?.qualityRate ? overview.qualityRate.toFixed(1) : '97.2',
+        unit: '%',
+        target: '95',
+        trend: '+2.2%',
+        icon: Shield,
+        color: 'text-green-500',
+      },
+      {
+        title: '생산량',
+        value: overview?.todayOutput ? overview.todayOutput.toFixed(2) : '80.00',
+        unit: '개',
+        target: '350',
+        trend: '',
+        icon: Clock,
+        color: 'text-blue-500',
+      },
+    ]
+  } catch (e) {
+    // 에러 시 기본값
+    const days = ['월', '화', '수', '목', '금']
+    weeklyMetrics.value = days.map((day, idx) => {
+  const percent = 1 + (idx - 2) * 0.025
+  const actual = Math.round(80 * percent)
+  const target = 350
+  const efficiency = Math.round((actual / target) * 1000) / 10
+  return { day, actual, target, efficiency }
+    })
+    performanceMetrics.value = [
+      {
+        title: '전체 효율성',
+        value: '91.3',
+        unit: '%',
+        target: '90',
+        trend: '+1.3%',
+        icon: Zap,
+        color: 'text-yellow-500',
+      },
+      {
+        title: '품질 지수',
+        value: '97.2',
+        unit: '%',
+        target: '95',
+        trend: '+2.2%',
+        icon: Shield,
+        color: 'text-green-500',
+      },
+      {
+        title: '생산량',
+        value: '80',
+        unit: '개',
+        target: '350',
+        trend: '',
+        icon: Clock,
+        color: 'text-blue-500',
+      },
+    ]
+  }
+}
+
+onMounted(() => {
+  fetchMetrics(factoryStore.factory.value)
+})
+
+
+watch(() => factoryStore.factory, (newVal) => {
+  fetchMetrics(newVal)
+})
+
+watch(() => factoryStore.factory.value, (newVal) => {
+  fetchMetrics(newVal)
+})
 </script>

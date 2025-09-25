@@ -10,7 +10,7 @@
 
       <!-- 필터 및 차트 -->
       <div class="space-y-6">
-        <ChartsFilters />
+  <!-- ChartsFilters 컴포넌트 제거됨 -->
         <ChartsOverview />
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -30,5 +30,5 @@ import ChartsOverview from "@/components/ChartsOverview.vue"
 import ProductionCharts from "@/components/ProductionCharts.vue"
 import QualityCharts from "@/components/QualityCharts.vue"
 import PerformanceCharts from "@/components/PerformanceCharts.vue"
-import ChartsFilters from "@/components/ChartsFilters.vue"
+// import ChartsFilters from "@/components/ChartsFilters.vue" // 제거됨
 </script>

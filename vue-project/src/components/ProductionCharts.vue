@@ -1,25 +1,37 @@
 <template>
   <div class="space-y-6">
-    <!-- 월별 생산량 추이 -->
+    <!-- 상단 카드형 버튼 -->
+    <div class="flex space-x-4 mb-4">
+      <button
+        v-for="type in ['press', 'body', 'paint']"
+        :key="type"
+        :class="['px-6 py-3 rounded-lg font-bold shadow', selectedType === type ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700']"
+        @click="selectType(type)"
+      >
+        {{ type.toUpperCase() }}
+      </button>
+    </div>
+
+    <!-- 주간별 생산량 추이 -->
     <Card class="bg-card/50 backdrop-blur-sm border-border">
       <CardHeader>
-        <CardTitle class="text-xl text-foreground">월별 생산량 추이</CardTitle>
+        <CardTitle class="text-xl text-foreground">주간별 생산량 추이</CardTitle>
       </CardHeader>
       <CardContent class="p-4">
         <div class="w-full h-64">
-          <Line :chart-data="monthlyChartData" :chart-options="chartOptions" class="w-full h-full"/>
+          <Line :chart-data="weeklyChartData" :chart-options="chartOptions" class="w-full h-full"/>
         </div>
       </CardContent>
     </Card>
 
-    <!-- 라인별 월간 생산량 -->
+    <!-- 라인별 주간 생산량 -->
     <Card class="bg-card/50 backdrop-blur-sm border-border">
       <CardHeader>
-        <CardTitle class="text-xl text-foreground">라인별 월간 생산량</CardTitle>
+        <CardTitle class="text-xl text-foreground">라인별 주간 생산량</CardTitle>
       </CardHeader>
       <CardContent class="p-4">
         <div class="w-full h-64">
-          <Bar :chart-data="dailyChartData" :chart-options="chartOptions" class="w-full h-full"/>
+          <Bar :chart-data="lineWeeklyChartData" :chart-options="chartOptions" class="w-full h-full"/>
         </div>
       </CardContent>
     </Card>
