@@ -12,12 +12,10 @@
         <CardContent>
           <div class="space-y-3">
             <div class="flex items-baseline space-x-2">
-              <span class="text-3xl font-bold">{{ stat.value }}</span>
+              <span class="text-3xl font-bold">
+                {{ stat.title === '오늘 생산량' ? Number(stat.value).toFixed(2) : stat.value }}
+              </span>
               <span class="text-sm text-gray-600">{{ stat.unit }}</span>
-              <div :class="['flex items-center text-xs', stat.trendUp ? 'text-green-600' : 'text-red-600']">
-                <component :is="stat.trendUp ? TrendingUp : TrendingDown" class="w-3 h-3 mr-1" />
-                {{ stat.trend }}
-              </div>
             </div>
             <div class="space-y-2">
               <div class="flex justify-between text-xs text-gray-600">
@@ -52,7 +50,7 @@
               </div>
               <div>
                 <p class="text-xs text-gray-600">생산량</p>
-                <p class="text-sm font-medium">{{ line.output }}개</p>
+                <p class="text-sm font-medium">{{ line.output }}/350</p>
               </div>
             </div>
           </div>
@@ -70,19 +68,64 @@ import CardTitle from "@/components/ui/card/CardTitle.vue"
 import Progress from "@/components/ui/Progress.vue"
 import Badge from "@/components/ui/Badge.vue"
 import { TrendingUp, TrendingDown, Target, Users, CheckCircle, Activity } from "lucide-vue-next"
+import { ref, onMounted, watch } from 'vue'
+import { useFactoryStore } from '@/stores/factoryStore.js'
+import statisticsAPI from '@/services/statistics.js'
 
-const overviewStats = [
-  { title: "오늘 생산량", value: "1,247", unit: "개", target: "1,500", progress: 83, trend: "+12%", trendUp: true, icon: Target, color: "text-blue-500" },
-  { title: "품질 합격률", value: "96.8", unit: "%", target: "95%", progress: 97, trend: "+2.1%", trendUp: true, icon: CheckCircle, color: "text-green-500" },
-  { title: "가동률", value: "87.5", unit: "%", target: "90%", progress: 87, trend: "-1.2%", trendUp: false, icon: Activity, color: "text-orange-500" },
-  { title: "작업 인원", value: "42", unit: "명", target: "45", progress: 93, trend: "-3명", trendUp: false, icon: Users, color: "text-purple-500" }
-]
+const overviewStats = ref([])
+const productionLines = ref([])
+const loading = ref(true)
+const error = ref(null)
 
-const productionLines = [
-  { name: "라인 A", status: "정상", efficiency: 94, output: 387 },
-  { name: "라인 B", status: "정상", efficiency: 91, output: 342 },
-  { name: "라인 C", status: "점검", efficiency: 0, output: 0 },
-  { name: "라인 D", status: "정상", efficiency: 88, output: 298 },
-  { name: "라인 E", status: "경고", efficiency: 76, output: 220 }
-]
+function makeOverviewStats(data) {
+  // API 결과를 카드 구조로 변환 (작업 인원 제외)
+  const targetOutput = 350;
+  return [
+    { title: "오늘 생산량", value: data.todayOutput, unit: "개", target: targetOutput, progress: Math.round((data.todayOutput/targetOutput)*100), trend: "", trendUp: true, icon: Target, color: "text-blue-500" },
+    { title: "품질 합격률", value: data.qualityRate?.toFixed(1), unit: "%", target: "95%", progress: Math.round(data.qualityRate), trend: "", trendUp: true, icon: CheckCircle, color: "text-green-500" },
+    { title: "가동률", value: data.runningRate?.toFixed(1), unit: "%", target: "90%", progress: Math.round(data.runningRate), trend: "", trendUp: true, icon: Activity, color: "text-orange-500" }
+  ]
+}
+
+function makeLineStatus(line) {
+  // 효율성 기준: 10% 미만이면 점검, 10% 이상이면 정상/경고
+  if (typeof line.efficiency === 'number') {
+    if (line.efficiency < 10) return '점검'
+    // 기존 status 활용 (running/warning)
+    if (line.status === 'running') return '정상'
+    if (line.status === 'warning') return '경고'
+    return '정상'
+  }
+  // fallback: 기존 status
+  if (line.status === 'running') return '정상'
+  if (line.status === 'warning') return '경고'
+  return '점검'
+}
+
+const { factory } = useFactoryStore()
+
+async function fetchOverviewAndLines() {
+  try {
+    loading.value = true
+    const [overview, lines] = await Promise.all([
+      statisticsAPI.getOverview(factory.value),
+      statisticsAPI.getLines()
+    ])
+    overviewStats.value = makeOverviewStats(overview)
+    productionLines.value = lines.map(l => ({
+      name: l.name,
+      status: makeLineStatus(l),
+      efficiency: l.efficiency,
+      output: l.currentOutput,
+      target: 350
+    }))
+  } catch (e) {
+    error.value = '데이터를 불러올 수 없습니다.'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchOverviewAndLines)
+watch(factory, fetchOverviewAndLines)
 </script>
