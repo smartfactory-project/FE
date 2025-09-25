@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vue-flow/core": "^1.46.5",
     "axios": "^1.11.0",
     "chart.js": "^3.9.1",
     "lucide-vue-next": "^0.540.0",

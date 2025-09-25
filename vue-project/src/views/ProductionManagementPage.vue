@@ -140,11 +140,67 @@ const stationFlow = computed(() =>
 const showModal = ref(false)
 const selectedStation = ref(null)
 
-function handleNodeClick(event) {
-  selectedStation.value = event.node.data.raw
-  showModal.value = true
+const MAX_BY_PROCESS = { press: 4, body: 4, paint: 4, assy: 6 }
+
+function toUrl(processType, stationNo) {
+  const proc = String(processType || "").toLowerCase() // press/body/paint/assy
+  const maxN = MAX_BY_PROCESS[proc] ?? 6
+  const n = Math.max(1, Math.min(stationNo, maxN))
+  return `http://192.168.203.84:11005/?Pro=${proc}_station${n}#MONITORING`
 }
 
+function getStationNumber(node) {
+  // ① stations 배열에서 순서 기반 번호 (1..N)
+  const raw = node.data.raw
+  const idx = stations.value.findIndex(s => s.stationId === raw.stationId)
+  if (idx >= 0) return idx + 1
+
+  // ② 혹시 stationName에 숫자가 있으면 그걸 우선 사용 (예: "...-03")
+  const m = String(raw?.stationName || "").match(/(\d{1,2})$/)
+  if (m) return parseInt(m[1], 10)
+
+  return 1
+}
+
+// function handleNodeClick(event) {
+//   selectedStation.value = event.node.data.raw
+//   showModal.value = true
+// }
+
+let lastPopupAt = 0
+function openPopup(url, { width = 1200, height = 800, name = "monitoring_popup" } = {}) {
+  const now = Date.now()
+  if (now - lastPopupAt < 500) return
+  lastPopupAt = now
+  // 화면 가운데 정렬
+  const dualScreenLeft = window.screenLeft ?? window.screenX ?? 0
+  const dualScreenTop  = window.screenTop  ?? window.screenY ?? 0
+  const w = window.innerWidth  ?? document.documentElement.clientWidth  ?? screen.width
+  const h = window.innerHeight ?? document.documentElement.clientHeight ?? screen.height
+  const left = Math.max(0, dualScreenLeft + (w - width) / 2)
+  const top  = Math.max(0, dualScreenTop  + (h - height) / 2)
+
+  const features = [
+    `width=${width}`, `height=${height}`,
+    `left=${left}`, `top=${top}`,
+    "resizable=yes", "scrollbars=yes",
+    "menubar=no", "toolbar=no", "location=no", "status=no",
+    "noopener=yes"
+  ].join(",")
+  const win = window.open(url, name, features)
+  if (win == null) {
+   console.warn("Popup was blocked. Please allow popups for this site.")
+   return false
+ }
+ win.focus()
+ return true
+}
+function handleNodeClick({ node }) {
+  const stationNo = getStationNumber(node)
+  const processType = selectedLine.value?.processType
+  const url = toUrl(processType, stationNo)
+  openPopup(url, { width: 1280, height: 820, name: `mon_${processType}_${stationNo}` })
+}
 </script>
 
 <template>
