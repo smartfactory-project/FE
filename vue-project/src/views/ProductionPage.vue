@@ -41,5 +41,4 @@ import ReportUpload from '@/components/ReportUpload.vue'
 import ProductionOverview from "@/components/ProductionOverview.vue"
 import ProductionMetrics from "@/components/ProductionMetrics.vue"
 import ProductionLines from "@/components/ProductionLines.vue"
-import ProductionAlerts from "@/components/ProductionAlerts.vue"
 </script>

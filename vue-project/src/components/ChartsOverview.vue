@@ -16,16 +16,7 @@
           <span class="text-3xl font-bold text-foreground">{{ stat.value }}</span>
           <span class="text-sm text-muted-foreground">{{ stat.unit }}</span>
         </div>
-        <div
-          class="flex items-center mt-2 text-sm"
-          :class="stat.trend === 'up' ? 'text-green-600' : 'text-red-600'"
-        >
-          <component
-            :is="stat.trend === 'up' ? TrendingUp : TrendingDown"
-            class="w-4 h-4 mr-1"
-          />
-          <span>{{ stat.change }} 지난 달 대비</span>
-        </div>
+        <!-- 변화 영역 제거 -->
       </CardContent>
     </Card>
   </div>
@@ -42,7 +33,7 @@ import { TrendingUp, TrendingDown, BarChart3, PieChart, Activity, Target } from 
 const overviewStats = [
   {
     title: "총 생산량",
-    value: "24,847",
+    value: "2456개",
     unit: "개",
     change: "+12.5%",
     trend: "up",
@@ -69,9 +60,9 @@ const overviewStats = [
   },
   {
     title: "분석 리포트",
-    value: "47",
+    value: "15개",
     unit: "개",
-    change: "+8.7%",
+    change: "+1.7%",
     trend: "up",
     icon: PieChart,
     color: "text-purple-500",

@@ -7,27 +7,32 @@
       </CardHeader>
       <CardContent>
         <div class="space-y-4">
-          <div v-for="(metric, index) in weeklyMetrics" :key="index" class="flex items-center space-x-4">
-            <div class="w-8 text-center">
-              <span class="text-sm font-semibold text-foreground">{{ metric.day }}</span>
-            </div>
-            <div class="flex-1">
-              <div class="flex justify-between text-sm mb-1">
-                <span class="text-gray-700 font-medium">{{ metric.actual }}/{{ metric.target }}개</span>
-                <span
-                  :class="[
-                    'font-bold',
-                    metric.efficiency >= 95 ? 'text-green-600' :
-                    metric.efficiency >= 85 ? 'text-yellow-600' :
-                    'text-red-600'
-                  ]"
-                >
-                  {{ metric.efficiency }}%
-                </span>
+          <template v-if="weeklyMetrics.length > 0">
+            <div v-for="(metric, index) in weeklyMetrics.slice(0, 5)" :key="index" class="flex items-center space-x-4">
+              <div class="w-8 text-center">
+                <span class="text-sm font-semibold text-foreground">{{ metric.day }}</span>
               </div>
-              <Progress :value="metric.efficiency" class="h-2" />
+              <div class="flex-1">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-gray-700 font-medium">{{ metric.actual }}/{{ metric.target }}개</span>
+                  <span
+                    :class="[
+                      'font-bold',
+                      metric.efficiency >= 95 ? 'text-green-600' :
+                      metric.efficiency >= 85 ? 'text-yellow-600' :
+                      'text-red-600'
+                    ]"
+                  >
+                    {{ metric.efficiency }}%
+                  </span>
+                </div>
+                <Progress :value="metric.efficiency" class="h-2" />
+              </div>
             </div>
-          </div>
+          </template>
+          <template v-else>
+            <div class="text-center text-gray-400 py-8">주간 생산현황 데이터가 없습니다.</div>
+          </template>
         </div>
       </CardContent>
     </Card>
@@ -61,7 +66,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { getOverview } from '../services/statistics'
+import { getOverview, getLines } from '../services/statistics'
 import { Zap, Clock, Shield } from 'lucide-vue-next'
 import { useFactoryStore } from '@/stores/factoryStore.js'
 import Card from '@/components/ui/card/Card.vue'
@@ -74,25 +79,34 @@ import Badge from '@/components/ui/Badge.vue'
 const factoryStore = useFactoryStore()
 const weeklyMetrics = ref([])
 const performanceMetrics = ref([])
+const lineMetrics = ref([])
 
 async function fetchMetrics(simulationName) {
   try {
-    console.log('[fetchMetrics] simulationName:', simulationName)
+    // 1. 개요 API 호출 (simulation_name 기준)
     const overview = await getOverview(simulationName)
-    console.log('[fetchMetrics] overview API result:', overview)
-    // 오늘 생산량 기준으로 주간 생산현황 생성
-    const baseOutput = overview?.todayOutput ?? 80
+    // 2. 라인별 상세 현황 API 호출 (object_name 기준)
+    const lines = await getLines()
+    // simulation_name과 일치하는 object_name만 추출
+    let filteredLines = lines.filter(l => {
+      return l.name && l.name.includes(simulationName)
+    })
+    // 만약 매칭되는 라인이 없으면 전체 라인 중 상위 5개를 fallback으로 사용
+    if (filteredLines.length === 0 && lines.length > 0) {
+      filteredLines = lines.slice(0, 5)
+    }
+    // 주간 생산현황: 해당 simulation_name의 object_name별 생산량/효율성 매칭
     const days = ['월', '화', '수', '목', '금']
     const target = 350
-    weeklyMetrics.value = days.map((day, idx) => {
-      // -5%, -2.5%, 0%, +2.5%, +5% 변동
-      const percent = 1 + (idx - 2) * 0.025
-      const actual = Math.round(baseOutput * percent)
-      const efficiency = Math.round((actual / target) * 100)
-      return { day, actual, target, efficiency }
+    weeklyMetrics.value = filteredLines.map((line, idx) => {
+      return {
+        day: days[idx] || `라인${idx+1}`,
+        actual: line.currentOutput ?? 0,
+        target,
+        efficiency: line.efficiency ?? 0
+      }
     })
-
-    // 성과 지표 (인력 활용률 제외, overview 값 활용)
+    // 성과 지표: overview 값 그대로 사용
     performanceMetrics.value = [
       {
         title: '전체 효율성',
@@ -126,11 +140,11 @@ async function fetchMetrics(simulationName) {
     // 에러 시 기본값
     const days = ['월', '화', '수', '목', '금']
     weeklyMetrics.value = days.map((day, idx) => {
-  const percent = 1 + (idx - 2) * 0.025
-  const actual = Math.round(80 * percent)
-  const target = 350
-  const efficiency = Math.round((actual / target) * 1000) / 10
-  return { day, actual, target, efficiency }
+      const percent = 1 + (idx - 2) * 0.025
+      const actual = Math.round(80 * percent)
+      const target = 350
+      const efficiency = Math.round((actual / target) * 1000) / 10
+      return { day, actual, target, efficiency }
     })
     performanceMetrics.value = [
       {

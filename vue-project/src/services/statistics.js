@@ -10,3 +10,4 @@ export const statisticsAPI = {
 
 export default statisticsAPI
 export const getOverview = statisticsAPI.getOverview;
+export const getLines = statisticsAPI.getLines;
