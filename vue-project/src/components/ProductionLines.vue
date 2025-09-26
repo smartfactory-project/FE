@@ -58,12 +58,21 @@ const detailedLines = ref([])
 const loading = ref(true)
 const error = ref(null)
 
-function getStatusColor(status) {
+function getStatusBgColor(status) {
   switch (status) {
-    case "running": return "bg-green-100 text-green-700"
-    case "warning": return "bg-yellow-100 text-yellow-700"
-    case "maintenance": return "bg-red-100 text-red-700"
-    default: return "bg-gray-100 text-gray-700"
+    case "running": return "#dcfce7" // bg-green-100
+    case "warning": return "#fef3c7" // bg-yellow-100
+    case "maintenance": return "#fee2e2" // bg-red-100
+    default: return "#f3f4f6" // bg-gray-100
+  }
+}
+
+function getStatusTextColor(status) {
+  switch (status) {
+    case "running": return "#15803d" // text-green-700
+    case "warning": return "#a16207" // text-yellow-700
+    case "maintenance": return "#b91c1c" // text-red-700
+    default: return "#374151" // text-gray-700
   }
 }
 function getStatusIcon(status) {
@@ -131,26 +140,33 @@ const maintenanceLines = computed(() =>
                 <div>
                   <h3 class="font-semibold text-foreground mb-1">{{ line.name }}</h3>
                   <div class="flex items-center space-x-2">
-                    <Badge variant="secondary" :class="getStatusColor(line.status)">
+                    <Badge
+                        variant="secondary"
+                        :style="{
+    backgroundColor: getStatusBgColor(line.status),
+    color: getStatusTextColor(line.status)
+  }"
+                    >
                       <component :is="getStatusIcon(line.status)" class="w-4 h-4" />
                       <span class="ml-1">
-                        {{
+    {{
                           line.status === 'running'
-                            ? '정상 가동'
-                            : line.status === 'warning'
-                            ? '주의 필요'
-                            : '점검 중'
+                              ? '정상 가동'
+                              : line.status === 'warning'
+                                  ? '주의 필요'
+                                  : '점검 중'
                         }}
-                      </span>
+  </span>
                     </Badge>
                     <span class="text-sm text-muted-foreground">{{ line.shift }} 근무</span>
                   </div>
                 </div>
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 ">
                   <Button variant="outline" size="sm">
                     <Settings class="w-4 h-4" />
                   </Button>
                   <Button
+
                     v-if="line.status === 'running'"
                     variant="outline"
                     size="sm"

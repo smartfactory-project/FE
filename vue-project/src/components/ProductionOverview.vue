@@ -38,9 +38,9 @@
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div v-for="(line, index) in productionLines" :key="index" class="p-4 rounded-lg bg-gray-50 text-center">
             <h3 class="font-semibold mb-2">{{ line.name }}</h3>
-            <Badge :class="line.status === '정상' ? 'bg-green-100 text-green-700' :
-                           line.status === '경고' ? 'bg-yellow-100 text-yellow-700' :
-                           'bg-red-100 text-red-700'">
+            <Badge :class="line.status === '정상' ? '!bg-green-100 !text-green-700' :
+               line.status === '경고' ? '!bg-yellow-100 !text-yellow-700' :
+               '!bg-red-100 !text-red-700'">
               {{ line.status }}
             </Badge>
             <div class="space-y-2 mt-2">
