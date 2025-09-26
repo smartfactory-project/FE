@@ -51,15 +51,23 @@
            group-hover:scale-x-100 transition-transform origin-left duration-300"
             />
           </RouterLink>
-
-
-
           <RouterLink
               to="/production"
               class="relative h-full flex items-center px-6 transition-all duration-200 group"
               :class="isHovered ? 'text-black' : 'text-white'"
           >
             생산현황
+            <span
+                class="absolute bottom-0 left-0 w-full h-[3px] bg-blue-900 scale-x-0
+           group-hover:scale-x-100 transition-transform origin-left duration-300"
+            />
+          </RouterLink>
+          <RouterLink
+              to="/charts"
+              class="relative h-full flex items-center px-6 transition-all duration-200 group"
+              :class="isHovered ? 'text-black' : 'text-white'"
+          >
+            차트보기
             <span
                 class="absolute bottom-0 left-0 w-full h-[3px] bg-blue-900 scale-x-0
            group-hover:scale-x-100 transition-transform origin-left duration-300"
